@@ -3,3 +3,7 @@ plumbum>=1.4.2
 pystache>=0.5.4
 requests>=2.7.0
 wand>=0.4.1
+buildorchestra>=0.1.0
+mavenpy>=0.1.0
+gradlepy>=0.1.0
+eclipsegen>=0.1.0

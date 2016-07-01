@@ -1,5 +1,7 @@
+import datetime
+import os
 import re
-from datetime import datetime
+import time
 from enum import Enum, unique
 
 
@@ -16,7 +18,7 @@ def LatestDate(repo):
     if commitDate > date:
       date = commitDate
 
-  return datetime.fromtimestamp(date)
+  return datetime.datetime.fromtimestamp(date)
 
 
 def Branch(repo):
@@ -213,7 +215,7 @@ def SetRemote(submodule, toType):
   origin = subrepo.remote()
   currentUrl = origin.config_reader.get('url')
 
-  httpMatch = re.match('https?://([\w\.@\:\-~]+)/(.+)', currentUrl)
+  httpMatch = re.match('https?://([\w\.@:\-~]+)/(.+)', currentUrl)
   sshMatch = re.match('(?:ssh://)?([\w\.@\-~]+)@([\w\.@\-~]+)[:/](.+)', currentUrl)
   if httpMatch:
     user = 'git'
@@ -224,14 +226,52 @@ def SetRemote(submodule, toType):
     host = sshMatch.group(2)
     path = sshMatch.group(3)
   else:
-    print('Cannot set remote for {}, unknown URL format {}.'.format(name, currentUrl))
+    raise RuntimeError('Cannot set remote for {}, unknown URL format {}.'.format(name, currentUrl))
 
   if toType is RemoteType.SSH:
     newUrl = '{}@{}:{}'.format(user, host, path)
   elif toType is RemoteType.HTTP:
     newUrl = 'https://{}/{}'.format(host, path)
   else:
-    print('Cannot set remote for {}, unknown URL type {}.'.format(name, str(toType)))
+    raise RuntimeError('Cannot set remote for {}, unknown URL type {}.'.format(name, str(toType)))
 
   print('Setting remote for {} to {}'.format(name, newUrl))
   origin.config_writer.set('url', newUrl)
+
+
+def create_qualifier(repo, branch=None):
+  timestamp = LatestDate(repo)
+  if not branch:
+    branch = Branch(repo)
+  return _format_qualifier(timestamp, branch)
+
+
+def create_now_qualifier(repo, branch=None):
+  timestamp = datetime.datetime.now()
+  if not branch:
+    branch = Branch(repo)
+  return _format_qualifier(timestamp, branch)
+
+
+def _format_qualifier(timestamp, branch):
+  return '{}-{}'.format(timestamp.strftime('%Y%m%d-%H%M%S'), branch)
+
+
+def repo_changed(repo, qualifierLocation):
+  timestamp = LatestDate(repo)
+  branch = Branch(repo)
+  changed = False
+  if not os.path.isfile(qualifierLocation):
+    changed = True
+  else:
+    with open(qualifierLocation, mode='r') as qualifierFile:
+      storedTimestampStr = qualifierFile.readline().replace('\n', '')
+      storedBranch = qualifierFile.readline().replace('\n', '')
+      if not storedTimestampStr or not storedBranch:
+        raise RuntimeError('Invalid qualifier file {}, please delete this file and retry'.format(qualifierLocation))
+      storedTimestamp = datetime.datetime.fromtimestamp(int(storedTimestampStr))
+      changed = (timestamp > storedTimestamp) or (branch != storedBranch)
+  with open(qualifierLocation, mode='w') as timestampFile:
+    timestampStr = str(int(time.mktime(timestamp.timetuple())))
+    timestampFile.write('{}\n{}\n'.format(timestampStr, branch))
+  return changed, _format_qualifier(timestamp, branch)

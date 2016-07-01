@@ -22,7 +22,6 @@
   </dependencies>
 
   <build>
-    <finalName>spoofax-uber</finalName>
     <resources>
       <resource>
         <directory>.</directory>

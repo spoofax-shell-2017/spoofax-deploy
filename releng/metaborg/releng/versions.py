@@ -1,7 +1,7 @@
 import os
+import re
 import xml.etree.ElementTree as ET
 from os import path
-import re
 
 from metaborg.util.path import CommonPrefix
 
@@ -64,7 +64,7 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, setEclipseVersions=True,
     except ET.ParseError:
       return False
     project = xmlRoot.getroot()
-    if project is None or project.tag != '{http://maven.apache.org/POM/4.0.0}project':
+    if project is None or project.tag != '{http://mavenpy.apache.org/POM/4.0.0}project':
       return False
     return True
 
@@ -75,13 +75,13 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, setEclipseVersions=True,
 
   '''
   Special handling for org.metaborg.spoofax.eclipse.updatesite project. Need to set the version in the pom file to the
-  Eclipse version instead of the Maven version, otherwise Tycho will fail the build.
+  Eclipse version instead of the Maven version, otherwise Tycho will fail the data.
   '''
   if setEclipseVersions:
-    print('Setting version in org.metaborg.spoofax.eclipse.updatesite POM file; {} -> {}'.format(oldMavenVersion, newEclipseVersion))
+    print('Setting version in org.metaborg.spoofax.eclipse.updatesite POM file; {} -> {}'.format(oldMavenVersion,
+      newEclipseVersion))
     ReplaceInFile(os.path.join(baseDir, 'spoofax-eclipse', 'org.metaborg.spoofax.eclipse.updatesite', 'pom.xml'),
       oldMavenVersion, newEclipseVersion)
-
 
   '''
   Special handling of org.metaborg.core.MetaborgConstants Java class. Need to set the METABORG_VERSION constant to the
@@ -103,12 +103,12 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, setEclipseVersions=True,
   for file in FindFiles(baseDir, 'extensions.xml'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
-  print('Setting versions in Gradle build files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
-  for file in FindFiles(baseDir, 'build.gradle'):
+  print('Setting versions in Gradle data files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
+  for file in FindFiles(baseDir, 'data.gradlepy'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
   print('Setting versions in Gradle settings files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
-  for file in FindFiles(baseDir, 'settings.gradle'):
+  for file in FindFiles(baseDir, 'settings.gradlepy'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
   print('Setting versions in MetaBorg files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
