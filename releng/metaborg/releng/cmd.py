@@ -435,6 +435,8 @@ class MetaborgRelengBuild(cli.Application):
       print(', '.join(builder.targets))
       return 1
 
+    builder.copyArtifactsTo = self.copyArtifacts
+
     builder.clean = not self.noClean
     builder.deploy = self.deploy
     builder.release = self.release
