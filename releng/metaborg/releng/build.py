@@ -149,7 +149,7 @@ class RelengBuilder(object):
   @staticmethod
   def __build_poms(basedir, deploy, maven, **_):
     target = 'deploy' if deploy else 'install'
-    cwd = os.path.join(basedir, 'releng', 'data', 'parent')
+    cwd = os.path.join(basedir, 'releng', 'build', 'parent')
     maven.run_in_dir(cwd, target)
 
   @staticmethod
@@ -205,23 +205,23 @@ class RelengBuilder(object):
     if bootstrapStratego:
       buildFile = os.path.join('bootstrap-pom.xml')
     else:
-      buildFile = os.path.join('data-pom.xml')
+      buildFile = os.path.join('build-pom.xml')
     if skipExpensive:
-      properties = {'strategoxt-skip-data': True, 'strategoxt-skip-test': True}
+      properties = {'strategoxt-skip-build': True, 'strategoxt-skip-build': True}
     else:
       properties = {'strategoxt-skip-test': skipTests or not testStratego}
     strategoXtDir = os.path.join(basedir, 'strategoxt', 'strategoxt')
     maven.run(strategoXtDir, buildFile, target, **properties)
 
     # Build StrategoXT parent POM
-    properties = {'strategoxt-skip-data': True, 'strategoxt-skip-assembly': True}
+    properties = {'strategoxt-skip-build': True, 'strategoxt-skip-assembly': True}
     parentBuildFile = os.path.join('buildpoms', 'pom.xml')
     maven.run(strategoXtDir, parentBuildFile, target, **properties)
 
     if bootstrapStratego:
       distribDir = os.path.join(strategoXtDir, 'buildpoms', 'bootstrap3', 'target')
     else:
-      distribDir = os.path.join(strategoXtDir, 'buildpoms', 'data', 'target')
+      distribDir = os.path.join(strategoXtDir, 'buildpoms', 'build', 'target')
 
     return StepResult([
       Artifact('StrategoXT distribution', _glob_one('{}/strategoxt-distrib-*-bin.tar'.format(distribDir)),
@@ -236,7 +236,7 @@ class RelengBuilder(object):
   @staticmethod
   def __build_java(basedir, qualifier, deploy, maven, **_):
     target = 'deploy' if deploy else 'install'
-    cwd = os.path.join(basedir, 'releng', 'data', 'java')
+    cwd = os.path.join(basedir, 'releng', 'build', 'java')
     maven.run_in_dir(cwd, target, forceContextQualifier=qualifier)
     return StepResult([
       Artifact('Spoofax sunshine JAR', _glob_one(
@@ -247,40 +247,40 @@ class RelengBuilder(object):
   @staticmethod
   def __build_java_uber(basedir, deploy, maven, **_):
     target = 'deploy' if deploy else 'install'
-    cwd = os.path.join(basedir, 'releng', 'data', 'uber')
+    cwd = os.path.join(basedir, 'releng', 'build', 'uber')
     maven.run_in_dir(cwd, target)
     return StepResult([
-      Artifact('Spoofax uber JAR', _glob_one(os.path.join(basedir, 'releng/data/uber/target/data.uber-*.jar')),
+      Artifact('Spoofax uber JAR', _glob_one(os.path.join(basedir, 'releng/build/uber/target/build.uber-*.jar')),
         'spoofax-uber.jar'),
     ])
 
   @staticmethod
   def __build_java_libs(basedir, deploy, maven, **_):
     target = 'deploy' if deploy else 'install'
-    cwd = os.path.join(basedir, 'releng', 'data', 'libs')
+    cwd = os.path.join(basedir, 'releng', 'build', 'libs')
     maven.run_in_dir(cwd, target)
     return StepResult([
-      Artifact('Spoofax libraries JAR', _glob_one(os.path.join(basedir, 'releng/data/libs/target/data.libs-*.jar')),
+      Artifact('Spoofax libraries JAR', _glob_one(os.path.join(basedir, 'releng/build/libs/target/build.libs-*.jar')),
         'spoofax-libs.jar'),
     ])
 
   @staticmethod
   def __build_language_prereqs(basedir, deploy, maven, **_):
     target = 'deploy' if deploy else 'install'
-    cwd = os.path.join(basedir, 'releng', 'data', 'language', 'parent')
+    cwd = os.path.join(basedir, 'releng', 'build', 'language', 'parent')
     maven.run_in_dir(cwd, target)
 
   @staticmethod
   def __build_languages(basedir, deploy, skipExpensive, maven, **_):
     target = 'deploy' if deploy else 'install'
     properties = {'spoofax.skip': True} if skipExpensive else {}
-    cwd = os.path.join(basedir, 'releng', 'data', 'language')
+    cwd = os.path.join(basedir, 'releng', 'build', 'language')
     maven.run_in_dir(cwd, target, **properties)
 
   @staticmethod
   def __build_dynsem(basedir, deploy, maven, **_):
     target = 'deploy' if deploy else 'install'
-    cwd = os.path.join(basedir, 'releng', 'data', 'language', 'dynsem')
+    cwd = os.path.join(basedir, 'releng', 'build', 'language', 'dynsem')
     # Don't skip expensive steps, always clean, because of incompatibilities/bugs with annotation processor.
     if 'clean' not in maven.targets:
       maven.targets.insert(0, 'clean')
@@ -290,7 +290,7 @@ class RelengBuilder(object):
   def __build_spt(basedir, deploy, skipExpensive, maven, **_):
     target = 'deploy' if deploy else 'install'
     properties = {'spoofax.skip': True} if skipExpensive else {}
-    cwd = os.path.join(basedir, 'releng', 'data', 'language', 'spt')
+    cwd = os.path.join(basedir, 'releng', 'build', 'language', 'spt')
     maven.run_in_dir(cwd, target, **properties)
     return StepResult([
       Artifact('SPT testrunner JAR', _glob_one(os.path.join(basedir,
@@ -300,13 +300,13 @@ class RelengBuilder(object):
   @staticmethod
   def __build_eclipse_prereqs(basedir, qualifier, deploy, maven, **_):
     target = 'deploy' if deploy else 'install'
-    cwd = os.path.join(basedir, 'releng', 'data', 'eclipse', 'deps')
+    cwd = os.path.join(basedir, 'releng', 'build', 'eclipse', 'deps')
     maven.run_in_dir(cwd, target, forceContextQualifier=qualifier)
 
   @staticmethod
   def __build_eclipse(basedir, qualifier, deploy, maven, **_):
     target = 'deploy' if deploy else 'install'
-    cwd = os.path.join(basedir, 'releng', 'data', 'eclipse')
+    cwd = os.path.join(basedir, 'releng', 'build', 'eclipse')
     maven.run_in_dir(cwd, target, forceContextQualifier=qualifier)
     return StepResult([
       Artifact('Spoofax Eclipse update site', os.path.join(basedir,
@@ -328,7 +328,7 @@ class RelengBuilder(object):
     return StepResult([
       Artifact('Spoofax for IntelliJ IDEA plugin',
         _glob_one(os.path.join(basedir,
-          'spoofax-intellij/org.metaborg.intellij/data/distributions/org.metaborg.intellij-*.zip')),
+          'spoofax-intellij/org.metaborg.intellij/build/distributions/org.metaborg.intellij-*.zip')),
         'spoofax-intellij.zip'),
     ])
 

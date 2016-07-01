@@ -75,7 +75,7 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, setEclipseVersions=True,
 
   '''
   Special handling for org.metaborg.spoofax.eclipse.updatesite project. Need to set the version in the pom file to the
-  Eclipse version instead of the Maven version, otherwise Tycho will fail the data.
+  Eclipse version instead of the Maven version, otherwise Tycho will fail the build.
   '''
   if setEclipseVersions:
     print('Setting version in org.metaborg.spoofax.eclipse.updatesite POM file; {} -> {}'.format(oldMavenVersion,
@@ -103,12 +103,12 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, setEclipseVersions=True,
   for file in FindFiles(baseDir, 'extensions.xml'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
-  print('Setting versions in Gradle data files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
-  for file in FindFiles(baseDir, 'data.gradlepy'):
+  print('Setting versions in Gradle build files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
+  for file in FindFiles(baseDir, 'build.gradle'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
   print('Setting versions in Gradle settings files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
-  for file in FindFiles(baseDir, 'settings.gradlepy'):
+  for file in FindFiles(baseDir, 'settings.gradle'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
   print('Setting versions in MetaBorg files; {} -> {}'.format(oldMavenVersion, newMavenVersion))

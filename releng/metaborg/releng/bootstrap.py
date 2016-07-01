@@ -41,7 +41,6 @@ def Bootstrap(repo, curVersion, curBaselineVersion):
       print('Please check if versions have been set correctly, then continue')
 
     def Step1():
-      print('Step 2: perform a test release data')
       try:
         builder = RelengBuilder(repo)
         builder.release = True
@@ -49,7 +48,7 @@ def Bootstrap(repo, curVersion, curBaselineVersion):
         builder.testStratego = True
         builder.build('languages', 'spt')
       except Exception as detail:
-        print('Test release data failed, not continuing to the next step')
+        print('Test release build failed, not continuing to the next step')
         print(str(detail))
         return
       db['state'] = 2

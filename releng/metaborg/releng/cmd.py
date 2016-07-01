@@ -289,14 +289,14 @@ class MetaborgRelengSetVersions(cli.Application):
     return 0
 
 
-@MetaborgReleng.subcommand("data")
+@MetaborgReleng.subcommand("build")
 class MetaborgRelengBuild(cli.Application):
   """
   Builds one or more components of spoofax-releng
   """
 
   buildStratego = cli.Flag(
-    names=['-s', '--data-stratego'], default=False,
+    names=['-s', '--build-stratego'], default=False,
     help='Build StrategoXT instead of downloading it',
     group='StrategoXT switches'
   )
@@ -332,7 +332,7 @@ class MetaborgRelengBuild(cli.Application):
   noDeps = cli.Flag(
     names=['-e', '--no-deps'], default=False,
     excludes=['--clean-repo'],
-    help='Do not data dependencies, just data given components',
+    help='Do not build dependencies, just build given components',
     group='Build switches'
   )
   deploy = cli.Flag(
@@ -342,13 +342,13 @@ class MetaborgRelengBuild(cli.Application):
   )
   release = cli.Flag(
     names=['-r', '--release'], default=False,
-    help='Perform a release data. Checks whether all dependencies are release versions, fails the data if not',
+    help='Perform a release build. Checks whether all dependencies are release versions, fails the build if not',
     group='Build switches'
   )
   skipExpensive = cli.Flag(
     names=['-k', '--skip-expensive'], default=False,
     requires=['--no-clean'], excludes=['--clean-repo'],
-    help='Skip expensive data steps such as Spoofax language builds. Typically used after a regular data to deploy more quickly',
+    help='Skip expensive build steps such as Spoofax language builds. Typically used after a regular build to deploy more quickly',
     group='Build switches'
   )
   copyArtifacts = cli.SwitchAttr(
@@ -431,7 +431,7 @@ class MetaborgRelengBuild(cli.Application):
     builder = RelengBuilder(repo, buildDeps=not self.noDeps)
 
     if len(components) == 0:
-      print('No components specified, pass one or more of the following components to data:')
+      print('No components specified, pass one or more of the following components to build:')
       print(', '.join(builder.targets))
       return 1
 

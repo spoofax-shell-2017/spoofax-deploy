@@ -96,7 +96,7 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
       print('Please check if versions have been set correctly, then continue')
 
     def Step5():
-      print('Step 5: perform a test release data')
+      print('Step 5: perform a test release build')
       try:
         builder = RelengBuilder(repo)
         builder.release = True
@@ -104,7 +104,7 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
         builder.testStratego = True
         builder.build('all')
       except Exception as detail:
-        print('Test release data failed, not continuing to the next step')
+        print('Test release build failed, not continuing to the next step')
         print(str(detail))
         return
       db['state'] = 6
