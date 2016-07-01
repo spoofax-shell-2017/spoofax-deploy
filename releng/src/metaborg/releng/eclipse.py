@@ -2,11 +2,11 @@ from metaborg.util.eclipse import EclipseGenerator
 
 
 class MetaborgEclipseGenerator(EclipseGenerator):
-  eclipseRepo = 'http://eclipse.mirror.triple-it.nl/releases/mars/'
+  eclipseRepo = 'http://eclipse.mirror.triple-it.nl/releases/neon/'
   eclipseIU = 'epp.package.java'
 
   m2eRepos = [
-    'http://download.eclipse.org/technology/m2e/releases',
+    'http://eclipse.mirror.triple-it.nl/technology/m2e/releases',
     'http://repo1.maven.org/maven2/.m2e/connectors/m2eclipse-buildhelper/0.15.0/N/0.15.0.201405280027/',
     'http://download.jboss.org/jbosstools/updates/m2e-extensions/m2e-jdt-compiler/',
     'http://repo1.maven.org/maven2/.m2e/connectors/m2eclipse-tycho/0.7.0/N/LATEST/'

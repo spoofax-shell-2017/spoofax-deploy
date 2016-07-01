@@ -166,7 +166,7 @@ class EclipseGenerator(object):
       return urllib.parse.urljoin('file:', urllib.request.pathname2url(location))
 
   def FixIni(self, stackSize='16M', heapSize='1G', maxHeapSize='1G', maxPermGen='256M',
-      requiredJavaVersion='1.7', server=True):
+      requiredJavaVersion='1.8', server=True):
     iniLocation = self.__IniLocation()
 
     # Python converts all line endings to '\n' when reading a file in text mode like this.
@@ -231,8 +231,9 @@ class EclipseGenerator(object):
       iniFile.write('-vm\n{}\n'.format(relJreLocation) + iniText)
 
   def __DownloadJre(self):
-    version = '7u72'
-    urlPrefix = 'http://download.oracle.com/otn-pub/java/jdk/7u72-b14/jre-7u72-'
+    version = '8u92'
+    urlPrefix = 'http://download.oracle.com/otn-pub/java/jdk/8u92-b14/jre-8u92-'
+
     extension = 'tar.gz'
 
     if self.config.os == 'macosx':
