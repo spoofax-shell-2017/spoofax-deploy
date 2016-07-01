@@ -64,7 +64,7 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, setEclipseVersions=True,
     except ET.ParseError:
       return False
     project = xmlRoot.getroot()
-    if project is None or project.tag != '{http://mavenpy.apache.org/POM/4.0.0}project':
+    if project is None or project.tag != '{http://maven.apache.org/POM/4.0.0}project':
       return False
     return True
 
