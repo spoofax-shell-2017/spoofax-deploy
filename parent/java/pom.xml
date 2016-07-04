@@ -56,7 +56,7 @@
               org.metaborg*,
               org.strategoxt.*,
               org.apache.tools.ant,
-              *;provider=metaborg;mandatory:=provider
+              *;provider=metaborg;mandatory:=provider;version=0
             </Import-Package>
             <!-- Include transitive dependencies, so that classes of transitive dependencies are available. -->
             <Embed-Transitive>true</Embed-Transitive>
