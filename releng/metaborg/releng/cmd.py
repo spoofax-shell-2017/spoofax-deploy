@@ -2,8 +2,8 @@ from os import path
 
 from git.repo.base import Repo
 from plumbum import cli
-
 from eclipsegen.generate import EclipseConfiguration
+
 from metaborg.releng.bootstrap import Bootstrap
 from metaborg.releng.build import RelengBuilder
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
@@ -540,40 +540,52 @@ class MetaborgRelengGenEclipse(cli.Application):
   Generate a plain Eclipse instance
   """
 
-  destination = cli.SwitchAttr(names=['-d', '--destination'], argtype=str, mandatory=True,
-    help='Path to generate the Eclipse instance at')
-  eclipseIU = cli.SwitchAttr(names=['--eclipse-package'], argtype=str, mandatory=False,
-    help='Base Eclipse package to install')
-  eclipseRepo = cli.SwitchAttr(names=['--eclipse-repo'], argtype=str, mandatory=False,
-    help='Eclipse repository used to install the base Eclipse package')
+  destination = cli.SwitchAttr(
+    names=['-d', '--destination'], argtype=str, mandatory=True,
+    help='Path to generate the Eclipse instance at'
+  )
 
-  moreRepos = cli.SwitchAttr(names=['-r', '--repo'], argtype=str, list=True,
-    help='Additional repositories to install units from')
-  moreIUs = cli.SwitchAttr(names=['-i', '--install'], argtype=str, list=True,
-    help='Additional units to install')
+  moreRepos = cli.SwitchAttr(
+    names=['-r', '--repo'], argtype=str, list=True,
+    help='Additional repositories to install units from'
+  )
+  moreIUs = cli.SwitchAttr(
+    names=['-i', '--install'], argtype=str, list=True,
+    help='Additional units to install'
+  )
 
-  os = cli.SwitchAttr(names=['-o', '--os'], argtype=str, default=None,
+  os = cli.SwitchAttr(
+    names=['-o', '--os'], argtype=str, default=None,
     help='OS to generate Eclipse for. Defaults to OS of this computer. '
-         'Choose from: macosx, linux, win32')
-  arch = cli.SwitchAttr(names=['-h', '--arch'], argtype=str, default=None,
+         'Choose from: macosx, linux, win32'
+  )
+  arch = cli.SwitchAttr(
+    names=['-h', '--arch'], argtype=str, default=None,
     help='Processor architecture to generate Eclipse for. Defaults to architecture of this computer. '
-         'Choose from: x86, x86_64')
+         'Choose from: x86, x86_64'
+  )
 
-  archive = cli.Flag(names=['-a', '--archive'], default=False,
+  archive = cli.Flag(
+    names=['-a', '--archive'], default=False,
     help='Archive the Eclipse instance at destination instead. '
-         'Results in a tar.gz file on UNIX systems, zip file on Windows systems')
-  addJre = cli.Flag(names=['-j', '--add-jre'], default=False,
-    help='Embeds a Java runtime in the Eclipse instance.')
-  archiveJreSeparately = cli.Flag(names=['--archive-jre-separately'], default=False,
+         'Results in a tar.gz file on UNIX systems, zip file on Windows systems'
+  )
+  addJre = cli.Flag(
+    names=['-j', '--add-jre'], default=False,
+    help='Embeds a Java runtime in the Eclipse instance.'
+  )
+  archiveJreSeparately = cli.Flag(
+    names=['--archive-jre-separately'], default=False,
     requires=['--archive', '--add-jre'],
-    help='Archive the non-JRE and JRE embedded versions separately, resulting in 2 archives')
+    help='Archive the non-JRE and JRE embedded versions separately, resulting in 2 archives'
+  )
 
   def main(self):
     print('Generating plain Eclipse instance')
 
     generator = MetaborgEclipseGenerator(self.parent.repo.working_tree_dir, self.destination,
-      EclipseConfiguration(os=self.os, arch=self.arch), eclipseRepo=self.eclipseRepo, eclipseIU=self.eclipseIU,
-      installSpoofax=False, moreRepos=self.moreRepos, moreIUs=self.moreIUs, archive=self.archive)
+      EclipseConfiguration(os=self.os, arch=self.arch), spoofax=False, moreRepos=self.moreRepos, moreIUs=self.moreIUs,
+      archive=self.archive)
     generator.generate(fixIni=True, addJre=self.addJre, archiveJreSeparately=self.archiveJreSeparately)
 
     return 0
@@ -585,53 +597,67 @@ class MetaborgRelengGenSpoofax(cli.Application):
   Generate an Eclipse instance for Spoofax users
   """
 
-  destination = cli.SwitchAttr(names=['-d', '--destination'], argtype=str, mandatory=True,
-    help='Path to generate the Eclipse instance at')
+  destination = cli.SwitchAttr(
+    names=['-d', '--destination'], argtype=str, mandatory=True,
+    help='Path to generate the Eclipse instance at'
+  )
 
-  eclipseIU = cli.SwitchAttr(names=['--eclipse-package'], argtype=str, mandatory=False,
-    help='Base Eclipse package to install')
-  eclipseRepo = cli.SwitchAttr(names=['--eclipse-repo'], argtype=str, mandatory=False,
-    help='Eclipse repository used to install the base Eclipse package')
-
-  spoofaxRepo = cli.SwitchAttr(names=['--spoofax-repo'], argtype=str, mandatory=False,
-    help='Spoofax repository used to install Spoofax plugins', excludes=['--local-spoofax-repo'])
-  localSpoofax = cli.Flag(names=['-l', '--local-spoofax-repo'], default=False,
-    help='Use locally built Spoofax updatesite', excludes=['--spoofax-repo'])
-
-  moreRepos = cli.SwitchAttr(names=['-r', '--repo'], argtype=str, list=True,
-    help='Additional repositories to install units from')
-  moreIUs = cli.SwitchAttr(names=['-i', '--install'], argtype=str, list=True,
-    help='Additional units to install')
-
+  spoofaxRepo = cli.SwitchAttr(
+    names=['--spoofax-repo'], argtype=str, mandatory=False,
+    excludes=['--local-spoofax-repo'],
+    help='Spoofax repository used to install Spoofax plugins'
+  )
+  localSpoofax = cli.Flag(
+    names=['-l', '--local-spoofax-repo'], default=False,
+    excludes=['--spoofax-repo'],
+    help='Use locally built Spoofax updatesite'
+  )
   noMeta = cli.Flag(names=['-m', '--nometa'], default=False,
     help="Don't install Spoofax meta-plugins such as the Stratego compiler and editor. "
-         'Results in a smaller Eclipse instance, but it can only be used to run Spoofax languages, not develop them')
+         'Results in a smaller Eclipse instance, but it can only be used to run Spoofax languages, not develop them'
+  )
 
-  os = cli.SwitchAttr(names=['-o', '--os'], argtype=str, default=None,
+  moreRepos = cli.SwitchAttr(
+    names=['-r', '--repo'], argtype=str, list=True,
+    help='Additional repositories to install units from'
+  )
+  moreIUs = cli.SwitchAttr(
+    names=['-i', '--install'], argtype=str, list=True,
+    help='Additional units to install'
+  )
+
+  os = cli.SwitchAttr(
+    names=['-o', '--os'], argtype=str, default=None,
     help='OS to generate Eclipse for. Defaults to OS of this computer. '
-         'Choose from: macosx, linux, win32')
-  arch = cli.SwitchAttr(names=['-h', '--arch'], argtype=str, default=None,
+         'Choose from: macosx, linux, win32'
+  )
+  arch = cli.SwitchAttr(
+    names=['-h', '--arch'], argtype=str, default=None,
     help='Processor architecture to generate Eclipse for. Defaults to architecture of this computer. '
-         'Choose from: x86, x86_64')
+         'Choose from: x86, x86_64'
+  )
 
-  archive = cli.Flag(names=['-a', '--archive'], default=False,
+  archive = cli.Flag(
+    names=['-a', '--archive'], default=False,
     help='Archive the Eclipse instance at destination instead. '
-         'Results in a tar.gz file on UNIX systems, zip file on Windows systems')
-  addJre = cli.Flag(names=['-j', '--add-jre'], default=False,
-    help='Embeds a Java runtime in the Eclipse instance.')
-  archiveJreSeparately = cli.Flag(names=['--archive-jre-separately'], default=False,
+         'Results in a tar.gz file on UNIX systems, zip file on Windows systems'
+  )
+  addJre = cli.Flag(
+    names=['-j', '--add-jre'], default=False,
+    help='Embeds a Java runtime in the Eclipse instance.'
+  )
+  archiveJreSeparately = cli.Flag(
+    names=['--archive-jre-separately'], default=False,
     requires=['--archive', '--add-jre'],
-    help='Archive the non-JRE and JRE embedded versions separately, resulting in 2 archives')
+    help='Archive the non-JRE and JRE embedded versions separately, resulting in 2 archives'
+  )
 
   def main(self):
     print('Generating Eclipse instance for Spoofax users')
 
     generator = MetaborgEclipseGenerator(self.parent.repo.working_tree_dir, self.destination,
-      EclipseConfiguration(os=self.os, arch=self.arch),
-      eclipseRepo=self.eclipseRepo, eclipseIU=self.eclipseIU,
-      installSpoofax=True, spoofaxRepo=self.spoofaxRepo,
-      spoofaxRepoLocal=self.localSpoofax, spoofaxDevelop=not self.noMeta,
-      moreRepos=self.moreRepos,
+      EclipseConfiguration(os=self.os, arch=self.arch), spoofax=True, spoofaxRepo=self.spoofaxRepo,
+      spoofaxRepoLocal=self.localSpoofax, langDev=not self.noMeta, lwbDev=not self.noMeta, moreRepos=self.moreRepos,
       moreIUs=self.moreIUs, archive=self.archive)
     generator.generate(fixIni=True, addJre=self.addJre, archiveJreSeparately=self.archiveJreSeparately,
       archivePrefix='spoofax')
