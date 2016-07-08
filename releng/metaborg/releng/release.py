@@ -120,7 +120,7 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
       builder.skipTests = True
       builder.buildStratego = True
       builder.testStratego = False
-      builder.build('languages', 'spt')
+      builder.build('all', 'eclipse-instances')
       db['state'] = 7
       print('Please check if deploying succeeded, and manually deploy extra artifacts, then continue')
 

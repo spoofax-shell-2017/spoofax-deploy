@@ -2,10 +2,15 @@ import glob
 import os
 import shutil
 
+from eclipsegen.generate import EclipseConfiguration
+
+from gradlepy.run import Gradle
+
+from mavenpy.run import Maven
+
 from buildorchestra.build import Builder
 from buildorchestra.result import StepResult, Artifact
-from gradlepy.run import Gradle
-from mavenpy.run import Maven
+from metaborg.releng.eclipse import MetaborgEclipseGenerator
 from metaborg.util.git import create_qualifier
 
 
@@ -69,7 +74,7 @@ class RelengBuilder(object):
     allLangDeps = stdLangDeps + [dynsem, spt]
 
     eclipsePrereqs = add_main_target('eclipse-prereqs', allLangDeps + [], RelengBuilder.__build_eclipse_prereqs)
-    add_main_target('eclipse', allLangDeps + [eclipsePrereqs], RelengBuilder.__build_eclipse)
+    eclipse = add_main_target('eclipse', allLangDeps + [eclipsePrereqs], RelengBuilder.__build_eclipse)
 
     intellijPrereqs = add_main_target('intellij-prereqs', allLangDeps + [], RelengBuilder.__build_intellij_prereqs)
     add_main_target('intellij', allLangDeps + [intellijPrereqs], RelengBuilder.__build_intellij)
@@ -77,7 +82,8 @@ class RelengBuilder(object):
     builder.add_target('all', mainTargets)
 
     # Additional targets
-    builder.add_build_step('java-libs', stdDeps, RelengBuilder.__build_java_libs)
+    builder.add_build_step('java-libs', [java], RelengBuilder.__build_java_libs)
+    builder.add_build_step('eclipse-instances', [eclipse], RelengBuilder.__build_eclipse_instances)
 
   @property
   def targets(self):
@@ -171,11 +177,11 @@ class RelengBuilder(object):
 
     if 'clean' in maven.targets:
       maven.targets.remove('clean')
-    properties = {'pomFile'     : makePermissivePom,
-                  'file'        : makePermissiveJar,
-                  'repositoryId': repositoryId,
-                  'url'         : deployUrl
-                  }
+    properties = {'pomFile': makePermissivePom,
+      'file'               : makePermissiveJar,
+      'repositoryId'       : repositoryId,
+      'url'                : deployUrl
+    }
     maven.run_in_dir(cwd, target, **properties)
 
   @staticmethod
@@ -313,6 +319,28 @@ class RelengBuilder(object):
         'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/site_assembly.zip'),
         'spoofax-eclipse.zip'),
     ])
+
+  @staticmethod
+  def __build_eclipse_instances(basedir, **_):
+    eclipsegenPath = 'eclipsegen'
+
+    def generate(eclipseOs, eclipseArch):
+      generator = MetaborgEclipseGenerator(basedir, eclipsegenPath,
+        EclipseConfiguration(os=eclipseOs, arch=eclipseArch), spoofax=True, spoofaxRepoLocal=True, archive=True)
+      generator.generate(fixIni=True, addJre=True, archiveJreSeparately=True, archivePrefix='spoofax')
+
+    generate('win32', 'x86')
+    generate('win32', 'x86_64')
+    generate('linux', 'x86')
+    generate('linux', 'x86_64')
+    generate('macosx', 'x86_64')
+
+    archives = glob.glob(os.path.join(basedir, eclipsegenPath, '*'))
+    artifacts = []
+    for archive in archives:
+      targetName = os.path.join('eclipse', os.path.basename(archive))
+      artifacts.append(Artifact('Spoofax Eclipse instance', archive, targetName))
+    return StepResult(artifacts)
 
   @staticmethod
   def __build_intellij_prereqs(basedir, gradle, **_):
