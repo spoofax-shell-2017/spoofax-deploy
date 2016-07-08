@@ -19,7 +19,7 @@ from metaborg.util.prompt import YesNo, YesNoTrice, YesNoTwice
 
 
 class MetaborgReleng(cli.Application):
-  PROGNAME = 'releng'
+  PROGNAME = 'b'
   VERSION = '2.0.0'
 
   repoDirectory = '.'
