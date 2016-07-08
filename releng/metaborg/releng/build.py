@@ -207,7 +207,7 @@ class RelengBuilder(object):
     else:
       buildFile = os.path.join('build-pom.xml')
     if skipExpensive:
-      properties = {'strategoxt-skip-build': True, 'strategoxt-skip-build': True}
+      properties = {'strategoxt-skip-build': True, 'strategoxt-skip-test': True}
     else:
       properties = {'strategoxt-skip-test': skipTests or not testStratego}
     strategoXtDir = os.path.join(basedir, 'strategoxt', 'strategoxt')
@@ -247,10 +247,10 @@ class RelengBuilder(object):
   @staticmethod
   def __build_java_uber(basedir, deploy, maven, **_):
     target = 'deploy' if deploy else 'install'
-    cwd = os.path.join(basedir, 'releng', 'build', 'uber')
+    cwd = os.path.join(basedir, 'spoofax', 'org.metaborg.spoofax.core.uber')
     maven.run_in_dir(cwd, target)
     return StepResult([
-      Artifact('Spoofax uber JAR', _glob_one(os.path.join(basedir, 'releng/build/uber/target/build.uber-*.jar')),
+      Artifact('Spoofax uber JAR', _glob_one(os.path.join(cwd, 'target/org.metaborg.spoofax.core.uber-*.jar')),
         'spoofax-uber.jar'),
     ])
 
