@@ -7,7 +7,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.metaborg</groupId>
   <artifactId>parent</artifactId>
-  <version>2.0.0-SNAPSHOT</version>
+  <version>2.0.0</version>
   <packaging>pom</packaging>
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Maven parent POM for all projects</description>
@@ -16,7 +16,7 @@
   <properties>
     <forceContextQualifier>qualifier</forceContextQualifier>
 
-    <metaborg-version>2.0.0-SNAPSHOT</metaborg-version>
+    <metaborg-version>2.0.0</metaborg-version>
     <metaborg-baseline-version>2.0.0-baseline-20160405-142357</metaborg-baseline-version>
     <metaborg-meta-lang-scope>provided</metaborg-meta-lang-scope>
 
@@ -505,7 +505,7 @@
                   <pluginExecutionFilter>
                     <groupId>org.metaborg</groupId>
                     <artifactId>spoofax-maven-plugin</artifactId>
-                    <versionRange>[2.0.0-SNAPSHOT,)</versionRange>
+                    <versionRange>[2.0.0,)</versionRange>
                     <goals>
                       <goal>clean</goal>
                       <goal>initialize</goal>
