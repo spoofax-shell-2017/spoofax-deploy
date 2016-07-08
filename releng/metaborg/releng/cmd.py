@@ -2,28 +2,25 @@ from os import path
 
 from git.repo.base import Repo
 from plumbum import cli
+from eclipsegen.generate import EclipseConfiguration
 
 from metaborg.releng.bootstrap import Bootstrap
-from metaborg.releng.build import (_centralMirror, _defaultLocalRepo,
-                                   _metaborgReleases, _metaborgSnapshots,
-                                   _mvnSettingsLocation, _qualifierLocation,
-                                   _spoofaxUpdateSite, BuildAll,
-                                   CreateQualifier, GenerateMavenSettings,
-                                   GetAllBuilds, RepoChanged, CreateNowQualifier, GenerateIcons)
+from metaborg.releng.build import RelengBuilder
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
+from metaborg.releng.icon import GenerateIcons
+from metaborg.releng.maven import MetaborgMavenSettingsGeneratorGenerator
 from metaborg.releng.release import Release
 from metaborg.releng.versions import SetVersions
-from metaborg.util.eclipse import EclipseConfiguration
 from metaborg.util.git import (CheckoutAll, CleanAll, MergeAll, PushAll,
-                               RemoteType, ResetAll, SetRemoteAll, TagAll,
-                               TrackAll, UpdateAll)
+  RemoteType, ResetAll, SetRemoteAll, TagAll,
+  TrackAll, UpdateAll, create_now_qualifier, create_qualifier, repo_changed)
 from metaborg.util.path import CommonPrefix
 from metaborg.util.prompt import YesNo, YesNoTrice, YesNoTwice
 
 
 class MetaborgReleng(cli.Application):
-  PROGNAME = 'releng'
-  VERSION = '1.4.0'
+  PROGNAME = 'b'
+  VERSION = '2.0.0'
 
   repoDirectory = '.'
   repo = None
@@ -298,105 +295,184 @@ class MetaborgRelengBuild(cli.Application):
   Builds one or more components of spoofax-releng
   """
 
-  USAGE = '    %(progname)s [SWITCHES] %(tailargs)s\n\n    with one or more components: {}\n'.format(
-    ', '.join(GetAllBuilds()))
+  buildStratego = cli.Flag(
+    names=['-s', '--build-stratego'], default=False,
+    help='Build StrategoXT instead of downloading it',
+    group='StrategoXT switches'
+  )
+  bootstrapStratego = cli.Flag(
+    names=['-b', '--bootstrap-stratego'], default=False,
+    help='Bootstrap StrategoXT instead of building it',
+    group='StrategoXT switches'
+  )
+  noStrategoTest = cli.Flag(
+    names=['-t', '--no-stratego-test'], default=False,
+    help='Skip StrategoXT tests',
+    group='StrategoXT switches'
+  )
 
-  buildStratego = cli.Flag(names=['-s', '--build-stratego'], default=False,
-    help='Build StrategoXT instead of downloading it', group='StrategoXT switches')
-  bootstrapStratego = cli.Flag(names=['-b', '--bootstrap-stratego'], default=False,
-    help='Bootstrap StrategoXT instead of building it', group='StrategoXT switches')
-  noStrategoTest = cli.Flag(names=['-t', '--no-stratego-test'], default=False, help='Skip StrategoXT tests',
-    group='StrategoXT switches')
+  qualifier = cli.SwitchAttr(
+    names=['-q', '--qualifier'], argtype=str, default=None,
+    excludes=['--now-qualifier'],
+    help='Qualifier to use',
+    group='Build switches'
+  )
+  nowQualifier = cli.Flag(
+    names=['-n', '--now-qualifier'], default=None,
+    excludes=['--qualifier'],
+    help='Use current time as qualifier instead of latest commit date',
+    group='Build switches'
+  )
 
-  qualifier = cli.SwitchAttr(names=['-q', '--qualifier'], argtype=str, default=None, excludes=['--now-qualifier'],
-    help='Qualifier to use', group='Build switches')
-  nowQualifier = cli.Flag(names=['-n', '--now-qualifier'], default=None, excludes=['--qualifier'],
-    help='Use current time as qualifier instead of latest commit date', group='Build switches')
-
-  cleanRepo = cli.Flag(names=['-c', '--clean-repo'], default=False,
+  cleanRepo = cli.Flag(
+    names=['-c', '--clean-repo'], default=False,
     help='Clean MetaBorg artifacts from the local repository before building',
-    group='Build switches')
-  noDeps = cli.Flag(names=['-e', '--no-deps'], default=False, excludes=['--clean-repo'],
-    help='Do not build dependencies, just build given components', group='Build switches')
-  deploy = cli.Flag(names=['-d', '--deploy'], default=False, help='Deploy after building',
-    group='Build switches')
-  release = cli.Flag(names=['-r', '--release'], default=False,
-    help='Perform a release build. Checks whether all dependencies are release versions, fails the build if not',
-    group='Build switches')
-  skipExpensive = cli.Flag(names=['-k', '--skip-expensive'], default=False, requires=['--no-clean'],
+    group='Build switches'
+  )
+  noDeps = cli.Flag(
+    names=['-e', '--no-deps'], default=False,
     excludes=['--clean-repo'],
-    help='Skip expensive build steps such as Ant builds. Typically used after a regular build to deploy more quickly',
-    group='Build switches')
-  skipComponents = cli.SwitchAttr(names=['-m', '--skip-component'], argtype=str, list=True,
-    help='Skips given components', group='Build switches')
-  copyArtifacts = cli.SwitchAttr(names=['-a', '--copy-artifacts'], argtype=str, default=None,
-    help='Copy produced artifacts to given location', group='Build switches')
-  generateJavaDoc = cli.Flag(names=['-j', '--generate-javadoc'], default=False,
+    help='Do not build dependencies, just build given components',
+    group='Build switches'
+  )
+  deploy = cli.Flag(
+    names=['-d', '--deploy'], default=False,
+    help='Deploy after building',
+    group='Build switches'
+  )
+  release = cli.Flag(
+    names=['-r', '--release'], default=False,
+    help='Perform a release build. Checks whether all dependencies are release versions, fails the build if not',
+    group='Build switches'
+  )
+  skipExpensive = cli.Flag(
+    names=['-k', '--skip-expensive'], default=False,
+    requires=['--no-clean'], excludes=['--clean-repo'],
+    help='Skip expensive build steps such as Spoofax language builds. Typically used after a regular build to deploy more quickly',
+    group='Build switches'
+  )
+  copyArtifacts = cli.SwitchAttr(
+    names=['-a', '--copy-artifacts'], argtype=str, default=None,
+    help='Copy produced artifacts to given location',
+    group='Build switches'
+  )
+  generateJavaDoc = cli.Flag(
+    names=['-j', '--generate-javadoc'], default=False,
     help="Generate and attach JavaDoc for Java projects",
-    group='Build switches')
+    group='Build switches'
+  )
 
-  resumeFrom = cli.SwitchAttr(names=['-f', '--resume-from'], argtype=str, default=None,
-    excludes=['--clean-repo'], requires=['--no-deps'],
-    help='Resume build from given artifact', group='Maven switches')
-  noClean = cli.Flag(names=['-u', '--no-clean'], default=False, help='Do not run the clean phase in Maven builds',
+  noClean = cli.Flag(
+    names=['-u', '--no-clean'], default=False,
+    help='Do not run the clean phase in Maven builds',
+    group='Maven switches'
+  )
+  skipTests = cli.Flag(
+    names=['-y', '--skip-tests'], default=False,
+    help="Skip tests",
+    group='Maven switches'
+  )
+  settings = cli.SwitchAttr(
+    names=['-i', '--settings'], argtype=str, default=None,
+    help='Maven settings file location',
+    group='Maven switches'
+  )
+  globalSettings = cli.SwitchAttr(
+    names=['-g', '--global-settings'], argtype=str, default=None,
+    help='Global Maven settings file location',
     group='Maven switches')
-  skipTests = cli.Flag(names=['-y', '--skip-tests'], default=False, help="Skip tests", group='Maven switches')
-  settings = cli.SwitchAttr(names=['-i', '--settings'], argtype=str, default=None, mandatory=False,
-    help='Maven settings file location', group='Maven switches')
-  globalSettings = cli.SwitchAttr(names=['-g', '--global-settings'], argtype=str, default=None, mandatory=False,
-    help='Global Maven settings file location', group='Maven switches')
-  localRepo = cli.SwitchAttr(names=['-l', '--local-repository'], argtype=str, default=_defaultLocalRepo,
-    mandatory=False, help='Local Maven repository location', group='Maven switches')
-  offline = cli.Flag(names=['-O', '--offline'], default=False, help="Pass --offline flag to Maven",
-    group='Maven switches')
-  debug = cli.Flag(names=['-D', '--debug'], default=False, excludes=['--quiet'],
-    help="Pass --debug and --errors flag to Maven", group='Maven switches')
-  quiet = cli.Flag(names=['-Q', '--quiet'], default=False, excludes=['--debug'],
-    help="Pass --quiet flag to Maven", group='Maven switches')
-    
-  noNative = cli.Flag(names=['-N', '--no-native'], default=False, mandatory=False,
-    help="Gradle won't use native services", group='Gradle switches')
+  localRepo = cli.SwitchAttr(
+    names=['-l', '--local-repository'], argtype=str, default=None,
+    help='Local Maven repository location',
+    group='Maven switches'
+  )
+  offline = cli.Flag(
+    names=['-O', '--offline'], default=False,
+    help="Pass --offline flag to Maven",
+    group='Maven switches'
+  )
+  debug = cli.Flag(
+    names=['-D', '--debug'], default=False,
+    excludes=['--quiet'],
+    help="Pass --debug and --errors flag to Maven",
+    group='Maven switches'
+  )
+  quiet = cli.Flag(
+    names=['-Q', '--quiet'], default=False,
+    excludes=['--debug'],
+    help="Pass --quiet flag to Maven",
+    group='Maven switches'
+  )
 
-  stack = cli.SwitchAttr(names=['--stack'], default="16M", help="JVM stack size", group='JVM switches')
-  minHeap = cli.SwitchAttr(names=['--min-heap'], default="512M", help="JVM minimum heap size",
-    group='JVM switches')
-  maxHeap = cli.SwitchAttr(names=['--max-heap'], default="1024M", help="JVM maximum heap size",
-    group='JVM switches')
-  permGen = cli.SwitchAttr(names=['--perm-gen'], default="512M", help="JVM maximum PermGen space",
-    group='JVM switches')
+  noNative = cli.Flag(
+    names=['-N', '--no-native'], default=False,
+    help="Gradle won't use native services",
+    group='Gradle switches'
+  )
+
+  stack = cli.SwitchAttr(
+    names=['--stack'], default="16M",
+    help="JVM stack size",
+    group='JVM switches'
+  )
+  minHeap = cli.SwitchAttr(
+    names=['--min-heap'], default="512M",
+    help="JVM minimum heap size",
+    group='JVM switches'
+  )
+  maxHeap = cli.SwitchAttr(
+    names=['--max-heap'], default="1024M",
+    help="JVM maximum heap size",
+    group='JVM switches'
+  )
 
   def main(self, *components):
+    repo = self.parent.repo
+    builder = RelengBuilder(repo, buildDeps=not self.noDeps)
+
     if len(components) == 0:
       print('No components specified, pass one or more of the following components to build:')
-      print(', '.join(GetAllBuilds()))
+      print(', '.join(builder.targets))
       return 1
 
-    mavenOpts = '-Xss{} -Xms{} -Xmx{} -XX:MaxPermSize={}'.format(self.stack, self.minHeap, self.maxHeap, self.permGen)
+    builder.copyArtifactsTo = self.copyArtifacts
 
-    repo = self.parent.repo
+    builder.clean = not self.noClean
+    builder.deploy = self.deploy
+    builder.release = self.release
+
+    builder.skipTests = self.skipTests
+    builder.skipExpensive = self.skipExpensive
+
+    builder.offline = self.offline
+
+    builder.debug = self.debug
+    builder.quiet = self.quiet
 
     if self.qualifier:
       qualifier = self.qualifier
     elif self.nowQualifier:
-      qualifier = CreateNowQualifier(repo)
+      qualifier = create_now_qualifier(repo)
     else:
       qualifier = None
+    builder.qualifier = qualifier
 
-    if self.generateJavaDoc:
-      extraArgs = '-Dgenerate-javadoc=true'
-    else:
-      extraArgs = None
+    builder.generateJavaDoc = self.generateJavaDoc
+
+    builder.buildStratego = self.buildStratego
+    builder.bootstrapStratego = self.bootstrapStratego
+    builder.testStratego = not self.noStrategoTest
+
+    builder.mavenSettingsFile = self.settings
+    builder.mavenGlobalSettingsFile = self.globalSettings
+    builder.mavenCleanLocalRepo = self.cleanRepo
+    builder.mavenLocalRepo = self.localRepo
+    builder.mavenOpts = '-Xss{} -Xms{} -Xmx{}'.format(self.stack, self.minHeap, self.maxHeap)
+
+    builder.gradleNoNative = self.noNative
 
     try:
-      BuildAll(repo=repo, components=components, buildDeps=not self.noDeps, resumeFrom=self.resumeFrom,
-        buildStratego=self.buildStratego, bootstrapStratego=self.bootstrapStratego,
-        strategoTest=not self.noStrategoTest, qualifier=qualifier, cleanRepo=self.cleanRepo,
-        deploy=self.deploy, release=self.release, skipExpensive=self.skipExpensive, skipComponents=self.skipComponents,
-        copyArtifactsTo=self.copyArtifacts, clean=not self.noClean, skipTests=self.skipTests,
-        settingsFile=self.settings, globalSettingsFile=self.globalSettings, localRepo=self.localRepo,
-        mavenOpts=mavenOpts, offline=self.offline, debug=self.debug,
-        quiet=self.quiet, noNative=self.noNative, extraArgs=extraArgs)
-      print('All done!')
+      builder.build(*components)
       return 0
     except RuntimeError as detail:
       print(str(detail))
@@ -464,41 +540,53 @@ class MetaborgRelengGenEclipse(cli.Application):
   Generate a plain Eclipse instance
   """
 
-  destination = cli.SwitchAttr(names=['-d', '--destination'], argtype=str, mandatory=True,
-    help='Path to generate the Eclipse instance at')
-  eclipseIU = cli.SwitchAttr(names=['--eclipse-package'], argtype=str, mandatory=False,
-    help='Base Eclipse package to install')
-  eclipseRepo = cli.SwitchAttr(names=['--eclipse-repo'], argtype=str, mandatory=False,
-    help='Eclipse repository used to install the base Eclipse package')
+  destination = cli.SwitchAttr(
+    names=['-d', '--destination'], argtype=str, mandatory=True,
+    help='Path to generate the Eclipse instance at'
+  )
 
-  moreRepos = cli.SwitchAttr(names=['-r', '--repo'], argtype=str, list=True,
-    help='Additional repositories to install units from')
-  moreIUs = cli.SwitchAttr(names=['-i', '--install'], argtype=str, list=True,
-    help='Additional units to install')
+  moreRepos = cli.SwitchAttr(
+    names=['-r', '--repo'], argtype=str, list=True,
+    help='Additional repositories to install units from'
+  )
+  moreIUs = cli.SwitchAttr(
+    names=['-i', '--install'], argtype=str, list=True,
+    help='Additional units to install'
+  )
 
-  os = cli.SwitchAttr(names=['-o', '--os'], argtype=str, default=None,
+  os = cli.SwitchAttr(
+    names=['-o', '--os'], argtype=str, default=None,
     help='OS to generate Eclipse for. Defaults to OS of this computer. '
-         'Choose from: macosx, linux, win32')
-  arch = cli.SwitchAttr(names=['-h', '--arch'], argtype=str, default=None,
+         'Choose from: macosx, linux, win32'
+  )
+  arch = cli.SwitchAttr(
+    names=['-h', '--arch'], argtype=str, default=None,
     help='Processor architecture to generate Eclipse for. Defaults to architecture of this computer. '
-         'Choose from: x86, x86_64')
+         'Choose from: x86, x86_64'
+  )
 
-  archive = cli.Flag(names=['-a', '--archive'], default=False,
+  archive = cli.Flag(
+    names=['-a', '--archive'], default=False,
     help='Archive the Eclipse instance at destination instead. '
-         'Results in a tar.gz file on UNIX systems, zip file on Windows systems')
-  addJre = cli.Flag(names=['-j', '--add-jre'], default=False,
-    help='Embeds a Java runtime in the Eclipse instance.')
-  archiveJreSeparately = cli.Flag(names=['--archive-jre-separately'], default=False,
+         'Results in a tar.gz file on UNIX systems, zip file on Windows systems'
+  )
+  addJre = cli.Flag(
+    names=['-j', '--add-jre'], default=False,
+    help='Embeds a Java runtime in the Eclipse instance.'
+  )
+  archiveJreSeparately = cli.Flag(
+    names=['--archive-jre-separately'], default=False,
     requires=['--archive', '--add-jre'],
-    help='Archive the non-JRE and JRE embedded versions separately, resulting in 2 archives')
+    help='Archive the non-JRE and JRE embedded versions separately, resulting in 2 archives'
+  )
 
   def main(self):
     print('Generating plain Eclipse instance')
 
     generator = MetaborgEclipseGenerator(self.parent.repo.working_tree_dir, self.destination,
-      EclipseConfiguration(os=self.os, arch=self.arch), eclipseRepo=self.eclipseRepo, eclipseIU=self.eclipseIU,
-      installSpoofax=False, moreRepos=self.moreRepos, moreIUs=self.moreIUs, archive=self.archive)
-    generator.Facade(fixIni=True, addJre=self.addJre, archiveJreSeparately=self.archiveJreSeparately)
+      EclipseConfiguration(os=self.os, arch=self.arch), spoofax=False, moreRepos=self.moreRepos, moreIUs=self.moreIUs,
+      archive=self.archive)
+    generator.generate(fixIni=True, addJre=self.addJre, archiveJreSeparately=self.archiveJreSeparately)
 
     return 0
 
@@ -509,55 +597,69 @@ class MetaborgRelengGenSpoofax(cli.Application):
   Generate an Eclipse instance for Spoofax users
   """
 
-  destination = cli.SwitchAttr(names=['-d', '--destination'], argtype=str, mandatory=True,
-    help='Path to generate the Eclipse instance at')
+  destination = cli.SwitchAttr(
+    names=['-d', '--destination'], argtype=str, mandatory=True,
+    help='Path to generate the Eclipse instance at'
+  )
 
-  eclipseIU = cli.SwitchAttr(names=['--eclipse-package'], argtype=str, mandatory=False,
-    help='Base Eclipse package to install')
-  eclipseRepo = cli.SwitchAttr(names=['--eclipse-repo'], argtype=str, mandatory=False,
-    help='Eclipse repository used to install the base Eclipse package')
-
-  spoofaxRepo = cli.SwitchAttr(names=['--spoofax-repo'], argtype=str, mandatory=False,
-    help='Spoofax repository used to install Spoofax plugins', excludes=['--local-spoofax-repo'])
-  localSpoofax = cli.Flag(names=['-l', '--local-spoofax-repo'], default=False,
-    help='Use locally built Spoofax updatesite', excludes=['--spoofax-repo'])
-
-  moreRepos = cli.SwitchAttr(names=['-r', '--repo'], argtype=str, list=True,
-    help='Additional repositories to install units from')
-  moreIUs = cli.SwitchAttr(names=['-i', '--install'], argtype=str, list=True,
-    help='Additional units to install')
-
+  spoofaxRepo = cli.SwitchAttr(
+    names=['--spoofax-repo'], argtype=str, mandatory=False,
+    excludes=['--local-spoofax-repo'],
+    help='Spoofax repository used to install Spoofax plugins'
+  )
+  localSpoofax = cli.Flag(
+    names=['-l', '--local-spoofax-repo'], default=False,
+    excludes=['--spoofax-repo'],
+    help='Use locally built Spoofax updatesite'
+  )
   noMeta = cli.Flag(names=['-m', '--nometa'], default=False,
     help="Don't install Spoofax meta-plugins such as the Stratego compiler and editor. "
-         'Results in a smaller Eclipse instance, but it can only be used to run Spoofax languages, not develop them')
+         'Results in a smaller Eclipse instance, but it can only be used to run Spoofax languages, not develop them'
+  )
 
-  os = cli.SwitchAttr(names=['-o', '--os'], argtype=str, default=None,
+  moreRepos = cli.SwitchAttr(
+    names=['-r', '--repo'], argtype=str, list=True,
+    help='Additional repositories to install units from'
+  )
+  moreIUs = cli.SwitchAttr(
+    names=['-i', '--install'], argtype=str, list=True,
+    help='Additional units to install'
+  )
+
+  os = cli.SwitchAttr(
+    names=['-o', '--os'], argtype=str, default=None,
     help='OS to generate Eclipse for. Defaults to OS of this computer. '
-         'Choose from: macosx, linux, win32')
-  arch = cli.SwitchAttr(names=['-h', '--arch'], argtype=str, default=None,
+         'Choose from: macosx, linux, win32'
+  )
+  arch = cli.SwitchAttr(
+    names=['-h', '--arch'], argtype=str, default=None,
     help='Processor architecture to generate Eclipse for. Defaults to architecture of this computer. '
-         'Choose from: x86, x86_64')
+         'Choose from: x86, x86_64'
+  )
 
-  archive = cli.Flag(names=['-a', '--archive'], default=False,
+  archive = cli.Flag(
+    names=['-a', '--archive'], default=False,
     help='Archive the Eclipse instance at destination instead. '
-         'Results in a tar.gz file on UNIX systems, zip file on Windows systems')
-  addJre = cli.Flag(names=['-j', '--add-jre'], default=False,
-    help='Embeds a Java runtime in the Eclipse instance.')
-  archiveJreSeparately = cli.Flag(names=['--archive-jre-separately'], default=False,
+         'Results in a tar.gz file on UNIX systems, zip file on Windows systems'
+  )
+  addJre = cli.Flag(
+    names=['-j', '--add-jre'], default=False,
+    help='Embeds a Java runtime in the Eclipse instance.'
+  )
+  archiveJreSeparately = cli.Flag(
+    names=['--archive-jre-separately'], default=False,
     requires=['--archive', '--add-jre'],
-    help='Archive the non-JRE and JRE embedded versions separately, resulting in 2 archives')
+    help='Archive the non-JRE and JRE embedded versions separately, resulting in 2 archives'
+  )
 
   def main(self):
     print('Generating Eclipse instance for Spoofax users')
 
     generator = MetaborgEclipseGenerator(self.parent.repo.working_tree_dir, self.destination,
-      EclipseConfiguration(os=self.os, arch=self.arch),
-      eclipseRepo=self.eclipseRepo, eclipseIU=self.eclipseIU,
-      installSpoofax=True, spoofaxRepo=self.spoofaxRepo,
-      spoofaxRepoLocal=self.localSpoofax, spoofaxDevelop=not self.noMeta,
-      moreRepos=self.moreRepos,
+      EclipseConfiguration(os=self.os, arch=self.arch), spoofax=True, spoofaxRepo=self.spoofaxRepo,
+      spoofaxRepoLocal=self.localSpoofax, langDev=not self.noMeta, lwbDev=not self.noMeta, moreRepos=self.moreRepos,
       moreIUs=self.moreIUs, archive=self.archive)
-    generator.Facade(fixIni=True, addJre=self.addJre, archiveJreSeparately=self.archiveJreSeparately,
+    generator.generate(fixIni=True, addJre=self.addJre, archiveJreSeparately=self.archiveJreSeparately,
       archivePrefix='spoofax')
 
     return 0
@@ -570,19 +672,20 @@ class MetaborgRelengGenMvnSettings(cli.Application):
   """
 
   destination = cli.SwitchAttr(names=['-d', '--destination'], argtype=str, mandatory=False,
-    default=_mvnSettingsLocation, help='Path to generate Maven settings file at')
+    default=MetaborgMavenSettingsGeneratorGenerator.defaultSettingsLocation,
+    help='Path to generate Maven settings file at')
   metaborgReleases = cli.SwitchAttr(names=['-r', '--metaborg-releases'], argtype=str, mandatory=False,
-    default=_metaborgReleases, help='Maven repository for MetaBorg releases')
+    default=MetaborgMavenSettingsGeneratorGenerator.defaultReleases, help='Maven repository for MetaBorg releases')
   metaborgSnapshots = cli.SwitchAttr(names=['-s', '--metaborg-snapshots'], argtype=str, mandatory=False,
-    default=_metaborgSnapshots, help='Maven repository for MetaBorg snapshots')
+    default=MetaborgMavenSettingsGeneratorGenerator.defaultSnapshots, help='Maven repository for MetaBorg snapshots')
   noMetaborgSnapshots = cli.Flag(names=['-S', '--no-metaborg-snapshots'], default=False,
     help="Don't add a Maven repository for MetaBorg snapshots")
   spoofaxUpdateSite = cli.SwitchAttr(names=['-u', '--spoofax-update-site'], argtype=str, mandatory=False,
-    default=_spoofaxUpdateSite, help='Eclipse update site for Spoofax plugins')
+    default=MetaborgMavenSettingsGeneratorGenerator.defaultUpdateSite, help='Eclipse update site for Spoofax plugins')
   noSpoofaxUpdateSite = cli.Flag(names=['-U', '--no-spoofax-update-site'], default=False,
     help="Don't add an Eclipse update site for Spoofax plugins")
   centralMirror = cli.SwitchAttr(names=['-m', '--central-mirror'], argtype=str, mandatory=False,
-    default=_centralMirror, help='Maven repository for mirroring Maven central')
+    default=MetaborgMavenSettingsGeneratorGenerator.defaultMirror, help='Maven repository for mirroring Maven central')
   confirmPrompt = cli.Flag(names=['-y', '--yes'], default=False,
     help='Answer warning prompts with yes automatically')
 
@@ -604,9 +707,11 @@ class MetaborgRelengGenMvnSettings(cli.Application):
     else:
       spoofaxUpdateSite = self.spoofaxUpdateSite
 
-    GenerateMavenSettings(location=self.destination, metaborgReleases=self.metaborgReleases,
+    generator = MetaborgMavenSettingsGeneratorGenerator(location=self.destination,
+      metaborgReleases=self.metaborgReleases,
       metaborgSnapshots=metaborgSnapshots, spoofaxUpdateSite=spoofaxUpdateSite,
       centralMirror=self.centralMirror)
+    generator.generate()
 
     return 0
 
@@ -635,7 +740,7 @@ class MetaborgRelengQualifier(cli.Application):
   """
 
   def main(self):
-    print(CreateQualifier(self.parent.repo))
+    print(create_qualifier(self.parent.repo))
 
 
 @MetaborgReleng.subcommand("changed")
@@ -646,12 +751,12 @@ class MetaborgRelengChanged(cli.Application):
   """
 
   destination = cli.SwitchAttr(names=['-d', '--destination'], argtype=str, mandatory=False,
-    default=_qualifierLocation, help='Path to read/write the last qualifier to')
+    default='.qualifier', help='Path to read/write the last qualifier to')
 
   forceChange = cli.Flag(names=['-f', '--force-change'], default=False, help='Force a change, always return 0')
 
   def main(self):
-    changed, qualifier = RepoChanged(self.parent.repo, self.destination)
+    changed, qualifier = repo_changed(self.parent.repo, self.destination)
     if self.forceChange or changed:
       print(qualifier)
       return 0

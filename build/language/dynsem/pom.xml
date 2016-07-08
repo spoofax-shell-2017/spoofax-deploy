@@ -5,10 +5,10 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
 >
   <modelVersion>4.0.0</modelVersion>
-  <artifactId>build.spt</artifactId>
+  <artifactId>build.dynsem</artifactId>
   <packaging>pom</packaging>
-  <description>Maven build for SPT</description>
-  <url>https://github.com/metaborg/spt</url>
+  <description>Maven build for Dynsem</description>
+  <url>https://github.com/metaborg/dynsem</url>
 
   <parent>
     <groupId>org.metaborg</groupId>
@@ -23,11 +23,8 @@
   </properties>
 
   <modules>
-    <module>${repo.root}/spt/org.metaborg.mbt.core</module>
-    <module>${repo.root}/spt/org.metaborg.spt.core</module>
-    <module>${repo.root}/spt/org.metaborg.spt.cmd</module>
-    <module>${repo.root}/spt/org.metaborg.meta.lang.spt</module>
-    <module>${repo.root}/spt/org.metaborg.meta.lang.spt.interactive</module>
+    <module>${repo.root}/dynsem/dynsem</module>
+    <module>${repo.root}/dynsem/org.metaborg.meta.lang.dynsem.interpreter</module>
   </modules>
 
   <developers>

@@ -13,7 +13,7 @@
   <parent>
     <groupId>org.metaborg</groupId>
     <artifactId>parent</artifactId>
-    <version>2.0.0-beta1</version>
+    <version>2.0.0-SNAPSHOT</version>
     <relativePath>../..</relativePath>
   </parent>
 
@@ -28,6 +28,11 @@
     <dependency>
       <groupId>org.metaborg</groupId>
       <artifactId>org.spoofax.terms</artifactId>
+      <version>${metaborg-version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.metaborg</groupId>
+      <artifactId>org.spoofax.terms.typesmart</artifactId>
       <version>${metaborg-version}</version>
     </dependency>
     <dependency>
@@ -90,6 +95,11 @@
     <!-- Parser -->
     <dependency>
       <groupId>org.metaborg</groupId>
+      <artifactId>sdf2table.core</artifactId>
+      <version>${metaborg-version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.metaborg</groupId>
       <artifactId>org.spoofax.jsglr</artifactId>
       <version>${metaborg-version}</version>
     </dependency>
@@ -107,7 +117,18 @@
     <!-- Interpretation -->
     <dependency>
       <groupId>org.metaborg</groupId>
-      <artifactId>org.metaborg.meta.interpreter.framework</artifactId>
+      <artifactId>org.metaborg.meta.lang.dynsem.interpreter</artifactId>
+      <version>${metaborg-version}</version>
+    </dependency>
+    <!-- SPT -->
+    <dependency>
+      <groupId>org.metaborg</groupId>
+      <artifactId>org.metaborg.mbt.core</artifactId>
+      <version>${metaborg-version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.metaborg</groupId>
+      <artifactId>org.metaborg.spt.core</artifactId>
       <version>${metaborg-version}</version>
     </dependency>
     <!-- External dependencies -->
@@ -149,7 +170,6 @@
         <version>${tycho-version}</version>
         <configuration>
           <strictBinIncludes>false</strictBinIncludes>
-          <strictVersions>false</strictVersions>
           <archiveSite>true</archiveSite>
         </configuration>
       </plugin>

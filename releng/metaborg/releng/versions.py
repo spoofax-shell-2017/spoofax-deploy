@@ -1,16 +1,26 @@
 import os
+import re
 import xml.etree.ElementTree as ET
 from os import path
 
 from metaborg.util.path import CommonPrefix
 
 
+def ToEclipseVersion(mavenVersion):
+  match = re.compile(r'(\d+)\.(\d+)\.(\d+)-(.+)').match(mavenVersion)
+  if match is not None:
+    version = '{}.{}.{}.{}'.format(match.group(1), match.group(2), match.group(3), match.group(4))
+  else:
+    version = mavenVersion.replace('-', '.')
+  return version.replace('SNAPSHOT', 'qualifier')
+
+
 def SetVersions(repo, oldMavenVersion, newMavenVersion, setEclipseVersions=True, dryRun=False, commit=False):
   baseDir = repo.working_tree_dir
   ignoreDirs = ['eclipse-installations', 'target', '_attic']
 
-  oldEclipseVersion = oldMavenVersion.replace('-SNAPSHOT', '.qualifier')
-  newEclipseVersion = newMavenVersion.replace('-SNAPSHOT', '.qualifier')
+  oldEclipseVersion = ToEclipseVersion(oldMavenVersion)
+  newEclipseVersion = ToEclipseVersion(newMavenVersion)
   if oldEclipseVersion == oldMavenVersion:
     oldVersionString = oldMavenVersion
   else:
@@ -63,39 +73,59 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, setEclipseVersions=True,
       text = fileHandle.read()
     return 'Bnd-LastModified' in text
 
+  '''
+  Special handling for org.metaborg.spoofax.eclipse.updatesite project. Need to set the version in the pom file to the
+  Eclipse version instead of the Maven version, otherwise Tycho will fail the build.
+  '''
+  if setEclipseVersions:
+    print('Setting version in org.metaborg.spoofax.eclipse.updatesite POM file; {} -> {}'.format(oldMavenVersion,
+      newEclipseVersion))
+    ReplaceInFile(os.path.join(baseDir, 'spoofax-eclipse', 'org.metaborg.spoofax.eclipse.updatesite', 'pom.xml'),
+      oldMavenVersion, newEclipseVersion)
 
-  print('Setting versions in Maven POM files')
+  '''
+  Special handling of org.metaborg.core.MetaborgConstants Java class. Need to set the METABORG_VERSION constant to the
+  Maven version.
+  '''
+  print('Setting version in MetaborgConstants Java class; {} -> {}'.format(oldMavenVersion, newMavenVersion))
+  ReplaceInFile(os.path.join(baseDir, 'spoofax', 'org.metaborg.core', 'src', 'main', 'java', 'org', 'metaborg', 'core',
+    'MetaborgConstants.java'), oldMavenVersion, newMavenVersion)
+
+  '''
+  Generic handling of all other files
+  '''
+  print('Setting versions in Maven POM files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
   for file in FindFiles(baseDir, 'pom.xml'):
     if IsMavenPomFile(file):
       ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
-  print('Setting versions in Maven extension files')
+  print('Setting versions in Maven extension files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
   for file in FindFiles(baseDir, 'extensions.xml'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
-  print('Setting versions in Gradle build files')
+  print('Setting versions in Gradle build files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
   for file in FindFiles(baseDir, 'build.gradle'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
-  print('Setting versions in Gradle settings files')
+  print('Setting versions in Gradle settings files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
   for file in FindFiles(baseDir, 'settings.gradle'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
-  print('Setting versions in MetaBorg files')
+  print('Setting versions in MetaBorg files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
   for file in FindFiles(baseDir, 'metaborg.yaml'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
   if setEclipseVersions:
-    print('Setting versions in MANIFEST.MF files')
+    print('Setting versions in MANIFEST.MF files; {} -> {}'.format(oldEclipseVersion, newEclipseVersion))
     for file in FindFiles(baseDir, 'MANIFEST.MF'):
       if not IsGeneratedManifestFile(file):
         ReplaceInFile(file, oldEclipseVersion, newEclipseVersion)
 
-    print('Setting versions in feature.xml files')
+    print('Setting versions in feature.xml files; {} -> {}'.format(oldEclipseVersion, newEclipseVersion))
     for file in FindFiles(baseDir, 'feature.xml'):
       ReplaceInFile(file, oldEclipseVersion, newEclipseVersion)
 
-    print('Setting versions in site.xml files')
+    print('Setting versions in site.xml files; {} -> {}'.format(oldEclipseVersion, newEclipseVersion))
     for file in FindFiles(baseDir, 'site.xml'):
       ReplaceInFile(file, oldEclipseVersion, newEclipseVersion)
 

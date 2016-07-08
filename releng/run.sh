@@ -13,9 +13,9 @@ else
 fi
 
 if command -v python3 >/dev/null 2>&1; then
-  python3 "$DIR/src/main.py" $*
+  python3 -u "$DIR/main.py" $*
 elif command -v python >/dev/null 2>&1; then
-  python "$DIR/src/main.py" $*
+  python -u "$DIR/main.py" $*
 else
   echo "Cannot find 'python3' or 'python' interpreter, please install Python 3"
 fi

@@ -4,7 +4,7 @@ from os import path
 
 import git
 
-from metaborg.releng.build import BuildAll
+from metaborg.releng.build import RelengBuilder
 from metaborg.releng.versions import SetVersions
 from metaborg.util.git import CheckoutAll, UpdateAll, TagAll, PushAll
 from metaborg.util.prompt import YesNo
@@ -59,7 +59,7 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
 
     def Step3():
       if repo.is_dirty():
-        print('You have uncommited changes, are you sure you want to continue?')
+        print('You have uncommitted changes, are you sure you want to continue?')
         if not YesNo():
           return
       print('Step 3: for each submodule: merge development branch into release branch')
@@ -84,11 +84,11 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
         if subrepo.is_dirty():
           dirtyRepos.append(submodule.name)
       if len(dirtyRepos) > 0:
-        print('You have uncommited changes in submodules {}, are you sure you want to continue?'.format(dirtyRepos))
+        print('You have uncommitted changes in submodules {}, are you sure you want to continue?'.format(dirtyRepos))
         if not YesNo():
           return
       print('Step 4: for each submodule: set version from the current development version to the next release version')
-      SetVersions(repo, curDevelopVersion, nextReleaseVersion, False, True)
+      SetVersions(repo, curDevelopVersion, nextReleaseVersion, setEclipseVersions=True, dryRun=False, commit=True)
       print('Updating submodule revisions')
       repo.git.add('--all')
       repo.index.commit('Update submodule revisions')
@@ -98,8 +98,11 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
     def Step5():
       print('Step 5: perform a test release build')
       try:
-        BuildAll(repo=repo, components=['all'], buildStratego=True, bootstrapStratego=True,
-          strategoTest=True, skipTests=False, release=True)
+        builder = RelengBuilder(repo)
+        builder.release = True
+        builder.buildStratego = True
+        builder.testStratego = True
+        builder.build('all')
       except Exception as detail:
         print('Test release build failed, not continuing to the next step')
         print(str(detail))
@@ -109,8 +112,15 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
 
     def Step6():
       print('Step 6: perform release deployment')
-      BuildAll(repo=repo, components=['all'], buildStratego=True, bootstrapStratego=True,
-        strategoTest=False, skipTests=True, release=True, deploy=True)
+      builder = RelengBuilder(repo)
+      builder.deploy = True
+      builder.release = True
+      builder.clean = False
+      builder.skipExpensive = True
+      builder.skipTests = True
+      builder.buildStratego = True
+      builder.testStratego = False
+      builder.build('all', 'eclipse-instances')
       db['state'] = 7
       print('Please check if deploying succeeded, and manually deploy extra artifacts, then continue')
 
@@ -145,7 +155,7 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
     def Step10():
       print(
         'Step 10: for each submodule: set version from the current development version to the next development version')
-      SetVersions(repo, curDevelopVersion, nextDevelopVersion, False, True)
+      SetVersions(repo, curDevelopVersion, nextDevelopVersion, setEclipseVersions=True, dryRun=False, commit=True)
       print('Updating submodule revisions')
       repo.git.add('--all')
       repo.index.commit('Update submodule revisions')

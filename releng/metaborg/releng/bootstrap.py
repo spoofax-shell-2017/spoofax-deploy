@@ -3,7 +3,7 @@ import shelve
 from datetime import datetime
 from os import path
 
-from metaborg.releng.build import BuildAll
+from metaborg.releng.build import RelengBuilder
 from metaborg.releng.versions import SetVersions
 from metaborg.util.git import PushAll
 from metaborg.util.prompt import YesNo
@@ -31,7 +31,7 @@ def Bootstrap(repo, curVersion, curBaselineVersion):
         if subrepo.is_dirty():
           dirtyRepos.append(submodule.name)
       if len(dirtyRepos) > 0:
-        print('You have uncommited changes in submodules {}, are you sure you want to continue?'.format(dirtyRepos))
+        print('You have uncommitted changes in submodules {}, are you sure you want to continue?'.format(dirtyRepos))
         if not YesNo():
           return
       print('Step 1: for each submodule: set version from the current version to the next baseline version')
@@ -41,10 +41,12 @@ def Bootstrap(repo, curVersion, curBaselineVersion):
       print('Please check if versions have been set correctly, then continue')
 
     def Step1():
-      print('Step 2: perform a test release build')
       try:
-        BuildAll(repo=repo, components=['languages', 'spt'], buildStratego=True, bootstrapStratego=False,
-          strategoTest=False, release=True)
+        builder = RelengBuilder(repo)
+        builder.release = True
+        builder.buildStratego = True
+        builder.testStratego = True
+        builder.build('languages', 'spt')
       except Exception as detail:
         print('Test release build failed, not continuing to the next step')
         print(str(detail))
@@ -54,8 +56,15 @@ def Bootstrap(repo, curVersion, curBaselineVersion):
 
     def Step2():
       print('Step 3: perform release deployment')
-      BuildAll(repo=repo, components=['languages', 'spt'], buildStratego=True, bootstrapStratego=False,
-        strategoTest=False, skipTests=True, skipExpensive=True, clean=False, release=True, deploy=True)
+      builder = RelengBuilder(repo)
+      builder.deploy = True
+      builder.release = True
+      builder.clean = False
+      builder.skipExpensive = True
+      builder.skipTests = True
+      builder.buildStratego = True
+      builder.testStratego = False
+      builder.build('languages', 'spt')
       db['state'] = 3
       print('Please check if deploying succeeded, and manually deploy extra artifacts, then continue')
 
