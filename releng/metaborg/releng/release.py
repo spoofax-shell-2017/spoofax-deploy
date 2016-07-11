@@ -24,10 +24,13 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
       print('Step 0: prepare development branch')
       developBranch.checkout()
       CheckoutAll(repo)
-      submoduleBranches = {}
+      repo.remotes.origin.pull()
+      CheckoutAll(repo)  # Check out again in case .gitmodules was changed.
+      UpdateAll(repo)
+      submoduleDevBranches = {}
       for submodule in repo.submodules:
-        submoduleBranches[submodule.name] = submodule.branch
-      db['submoduleBranches'] = submoduleBranches
+        submoduleDevBranches[submodule.name] = submodule.branch
+      db['submoduleDevBranches'] = submoduleDevBranches
       db['state'] = 1
       Step1()
 
@@ -36,7 +39,12 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
       releaseBranch.checkout()
       CheckoutAll(repo)
       repo.remotes.origin.pull()
+      CheckoutAll(repo)  # Check out again in case .gitmodules was changed.
       UpdateAll(repo)
+      submoduleRelBranches = {}
+      for submodule in repo.submodules:
+        submoduleRelBranches[submodule.name] = submodule.branch
+      db['submoduleRelBranches'] = submoduleRelBranches
       db['state'] = 2
       Step2()
 
@@ -44,7 +52,7 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
       print('Step 2: merge development branch into release branch')
       try:
         # Merge using 'theirs' to overwrite any changes in the release branch with changes from the development branch
-        repo.git.merge('-Xtheirs', developBranch.name)
+        repo.git.merge('--strategy=recursive', '--strategy-option=theirs', developBranch.name)
       except git.exc.GitCommandError as detail:
         print('Automatic merge failed')
         print(str(detail))
@@ -63,14 +71,21 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
         if not YesNo():
           return
       print('Step 3: for each submodule: merge development branch into release branch')
-      submoduleBranches = db['submoduleBranches']
+      submoduleDevBranches = db['submoduleDevBranches']
+      submoduleRelBranches = db['submoduleRelBranches']
       for submodule in repo.submodules:
         subrepo = submodule.module()
         try:
           print('Merging submodule {}'.format(submodule.name))
-          # Merge using 'theirs' to overwrite any changes in the release branch with changes from the development branch
-          # This should change all versions to the current development branch
-          subrepo.git.merge('-Xtheirs', submoduleBranches[submodule.name])
+          # Use merging strategy 3 from http://stackoverflow.com/a/27338013/499240 to make release branch identical to
+          # development branch, while keeping correct parent order.
+          submoduleDevBranch = submoduleDevBranches[submodule.name]
+          submoduleRelBranch = submoduleRelBranches[submodule.name]
+          subrepo.git.merge('--strategy=ours', submoduleDevBranch)
+          subrepo.git.checkout('--detach', submoduleDevBranch)
+          subrepo.git.reset('--soft', submoduleRelBranch)
+          subrepo.git.checkout(submoduleRelBranch)
+          subrepo.git.commit('--amend', '-C', 'HEAD')
         except git.exc.GitCommandError as detail:
           print('Automatic merge failed')
           print(str(detail))
@@ -97,11 +112,12 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
 
     def Step5():
       print('Step 5: perform a test release build')
+      builder = RelengBuilder(repo)
+      builder.copyArtifactsTo = 'dist'
+      builder.release = True
+      builder.buildStratego = True
+      builder.testStratego = True
       try:
-        builder = RelengBuilder(repo)
-        builder.release = True
-        builder.buildStratego = True
-        builder.testStratego = True
         builder.build('all')
       except Exception as detail:
         print('Test release build failed, not continuing to the next step')
@@ -113,6 +129,7 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
     def Step6():
       print('Step 6: perform release deployment')
       builder = RelengBuilder(repo)
+      builder.copyArtifactsTo = 'dist'
       builder.deploy = True
       builder.release = True
       builder.clean = False
@@ -120,7 +137,12 @@ def Release(repo, releaseBranchName, developBranchName, curDevelopVersion, nextR
       builder.skipTests = True
       builder.buildStratego = True
       builder.testStratego = False
-      builder.build('all', 'eclipse-instances')
+      try:
+        builder.build('all', 'eclipse-instances')
+      except Exception as detail:
+        print('Release deployment failed, not continuing to the next step')
+        print(str(detail))
+        return
       db['state'] = 7
       print('Please check if deploying succeeded, and manually deploy extra artifacts, then continue')
 
