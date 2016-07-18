@@ -2,12 +2,11 @@ import glob
 import os
 import shutil
 
-from eclipsegen.generate import EclipseConfiguration
-
 from gradlepy.run import Gradle
 
 from mavenpy.run import Maven
 
+from eclipsegen.generate import EclipseConfiguration
 from buildorchestra.build import Builder
 from buildorchestra.result import StepResult, Artifact
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
@@ -148,7 +147,8 @@ class RelengBuilder(object):
       gradle=gradle
     )
     if self.copyArtifactsTo:
-      result.copy_to(self.copyArtifactsTo)
+      copyTo = _make_abs(self.copyArtifactsTo, self.__repo.working_tree_dir)
+      result.copy_to(copyTo)
 
   # Builders
 
@@ -378,3 +378,9 @@ def _clean_local_repo(localRepo):
   cachePath = os.path.join(localRepo, '.cache', 'tycho')
   print('Deleting {}'.format(cachePath))
   shutil.rmtree(cachePath, ignore_errors=True)
+
+
+def _make_abs(directory, relativeTo):
+  if not os.path.isabs(directory):
+    return os.path.normpath(os.path.join(relativeTo, directory))
+  return directory
