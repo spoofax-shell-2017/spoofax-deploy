@@ -53,6 +53,10 @@
     <!-- StrategoXT -->
     <module>${repo.root}/strategoxt/strategoxt/stratego-libraries/java-backend</module>
 
+    <!-- SPT -->
+    <module>${repo.root}/spt/org.metaborg.mbt.core</module>
+    <module>${repo.root}/spt/org.metaborg.spt.core</module>
+
     <!-- Spoofax Maven Plugin -->
     <module>${repo.root}/spoofax-maven/spoofax-maven-plugin</module>
     <module>${repo.root}/spoofax-maven/spoofax-maven-plugin-pomless</module>

@@ -23,8 +23,6 @@
   </properties>
 
   <modules>
-    <module>${repo.root}/spt/org.metaborg.mbt.core</module>
-    <module>${repo.root}/spt/org.metaborg.spt.core</module>
     <module>${repo.root}/spt/org.metaborg.spt.cmd</module>
     <module>${repo.root}/spt/org.metaborg.meta.lang.spt</module>
     <module>${repo.root}/spt/org.metaborg.meta.lang.spt.interactive</module>
