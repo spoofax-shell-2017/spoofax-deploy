@@ -147,7 +147,7 @@
       <dependency>
         <groupId>com.virtlink.commons</groupId>
         <artifactId>commons-configuration2-jackson</artifactId>
-        <version>0.6.0</version>
+        <version>0.6.1</version>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
