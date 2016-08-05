@@ -494,11 +494,21 @@
                     <artifactId>spoofax-maven-plugin</artifactId>
                     <versionRange>[2.1.0-SNAPSHOT,)</versionRange>
                     <goals>
+                      <!-- Language specification -->
                       <goal>clean</goal>
                       <goal>initialize</goal>
                       <goal>generate-sources</goal>
                       <goal>compile</goal>
                       <goal>package</goal>
+                      <goal>verify</goal>
+                      <!-- Language project -->
+                      <goal>project-generate-sources</goal>
+                      <goal>project-clean</goal>
+                      <!-- Language test -->
+                      <goal>test</goal>
+                      <!-- Manual goals -->
+                      <goal>generate</goal>
+                      <goal>generate-eclipse</goal>
                       <goal>run</goal>
                     </goals>
                   </pluginExecutionFilter>
