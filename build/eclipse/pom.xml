@@ -33,6 +33,7 @@
 
 		<!-- Meta language Eclipse plugins -->
 		<module>${repo.root}/dynsem/dynsem.eclipse</module>
+		<module>${repo.root}/dynsem/dynsem2coq.eclipse</module>
 		<module>${repo.root}/esv/org.metaborg.meta.lang.esv.eclipse</module>
 		<module>${repo.root}/mb-rep/org.metaborg.meta.lang.aterm.eclipse</module>
 		<module>${repo.root}/nabl/org.metaborg.meta.lang.nabl.eclipse</module>
@@ -47,6 +48,7 @@
 		<module>${repo.root}/spt/org.metaborg.meta.lang.spt.interactive.eclipse</module>
 		<module>${repo.root}/stratego/org.metaborg.meta.lang.stratego.eclipse</module>
 		<module>${repo.root}/ts/org.metaborg.meta.lang.ts.eclipse</module>
+		<module>${repo.root}/metaborg-coq/org.metaborg.lang.coq.eclipse</module>
 	</modules>
 
 	<developers>
