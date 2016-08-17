@@ -35,6 +35,7 @@
     <module>${repo.root}/sdf/org.metaborg.meta.lang.template</module>
     <module>${repo.root}/stratego/org.metaborg.meta.lang.stratego</module>
     <module>${repo.root}/ts/org.metaborg.meta.lang.ts</module>
+    <module>${repo.root}/metaborg-coq/org.metaborg.lang.coq</module>
   </modules>
 
   <developers>
