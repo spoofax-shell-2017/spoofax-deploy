@@ -127,6 +127,9 @@ class RelengBuilder(object):
     gradle.quiet = self.quiet
     gradle.mavenLocalRepo = self.mavenLocalRepo
     gradle.noNative = self.gradleNoNative
+    # Disable the Gradle daemon; it causes issues on the build farm?
+    # FIXME: Make this an option `gradle.daemon = False` in gradlepy.
+    gradle.env['GRADLE_OPTS'] = '-Dorg.gradle.daemon=false'
 
     if self.mavenCleanLocalRepo:
       # TODO: self.mavenLocalRepo can be None
