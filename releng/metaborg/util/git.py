@@ -245,7 +245,7 @@ def create_now_qualifier(repo, branch=None):
 
 
 def _format_qualifier(timestamp, branch):
-  return '{}-{}'.format(timestamp.strftime('%Y%m%d-%H%M%S'), branch)
+  return '{}-{}'.format(timestamp.strftime('%Y%m%d-%H%M%S'), branch.replace('/', '_'))
 
 
 def repo_changed(repo, qualifierLocation):
