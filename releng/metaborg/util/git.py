@@ -128,16 +128,7 @@ def Merge(submodule, branchName):
     return
 
   subrepo = submodule.module()
-  head = subrepo.head
-  if head.is_detached:
-    print('Cannot merge, {} has a DETACHED HEAD.'.format(submodule.name))
-    return
-  branch = subrepo.heads[branchName]
-  if branch is None:
-    print('Cannot merge, branch {} does not exist'.format(branchName))
-    return
-  print('Merging branch {} into {} in {}'.format(branch, head.reference.name, submodule.name))
-  subrepo.index.merge_tree(branch)
+  subrepo.git.merge(branchName)
 
 
 def MergeAll(repo, branchName):
