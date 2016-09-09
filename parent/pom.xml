@@ -450,7 +450,7 @@
           </configuration>
         </plugin>
 
-        <!-- Don't warn about missing m2e mapping for several goals. This plugin's configuration is used to store 
+        <!-- Don't warn about missing m2e mapping for several goals. This plugin's configuration is used to store
           Eclipse m2e settings only. It has no influence on the Maven build itself. -->
         <plugin>
           <groupId>org.eclipse.m2e</groupId>
@@ -582,11 +582,11 @@
   <distributionManagement>
     <snapshotRepository>
       <id>${deployRepositoryId}</id>
-      <url>http://artifacts.metaborg.org/content/repositories/snapshots/</url>
+      <url>http://artifacts.metaborg.org/content/repositories/in4303/</url>
     </snapshotRepository>
     <repository>
       <id>${deployRepositoryId}</id>
-      <url>http://artifacts.metaborg.org/content/repositories/releases/</url>
+      <url>http://artifacts.metaborg.org/content/repositories/in4303/</url>
     </repository>
   </distributionManagement>
 

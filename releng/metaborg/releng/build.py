@@ -174,9 +174,9 @@ class RelengBuilder(object):
 
     repositoryId = "metaborg-nexus"
     if release:
-      deployUrl = 'http://artifacts.metaborg.org/content/repositories/releases/'
+      deployUrl = 'http://artifacts.metaborg.org/content/repositories/in4303/'
     else:
-      deployUrl = 'http://artifacts.metaborg.org/content/repositories/snapshots/'
+      deployUrl = 'http://artifacts.metaborg.org/content/repositories/in4303/'
 
     if 'clean' in maven.targets:
       maven.targets.remove('clean')

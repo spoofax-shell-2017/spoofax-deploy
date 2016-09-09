@@ -4,7 +4,7 @@ from mavenpy.settings import MavenSettingsGenerator
 class MetaborgMavenSettingsGeneratorGenerator(MavenSettingsGenerator):
   defaultSettingsLocation = MavenSettingsGenerator.user_settings_location()
   defaultReleases = 'http://artifacts.metaborg.org/content/repositories/releases/'
-  defaultSnapshots = 'http://artifacts.metaborg.org/content/repositories/snapshots/'
+  defaultSnapshots = 'http://artifacts.metaborg.org/content/repositories/in4303/'
   defaultUpdateSite = 'http://download.spoofax.org/update/nightly/'
   defaultMirror = 'http://artifacts.metaborg.org/content/repositories/central/'
 
