@@ -415,12 +415,12 @@ class MetaborgRelengBuild(cli.Application):
     group='JVM switches'
   )
   minHeap = cli.SwitchAttr(
-    names=['--min-heap'], default="512M",
+    names=['--min-heap'], default="2G",
     help="JVM minimum heap size",
     group='JVM switches'
   )
   maxHeap = cli.SwitchAttr(
-    names=['--max-heap'], default="1024M",
+    names=['--max-heap'], default="2G",
     help="JVM maximum heap size",
     group='JVM switches'
   )
