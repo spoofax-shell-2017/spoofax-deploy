@@ -398,6 +398,11 @@ class MetaborgRelengBuild(cli.Application):
     help="Gradle won't use native services",
     group='Gradle switches'
   )
+  noDaemon = cli.Flag(
+    names=['--no-daemon'], default=False,
+    help="Gradle won't use its build daemon",
+    group='Gradle switches'
+  )
 
   stack = cli.SwitchAttr(
     names=['--stack'], default="16M",
@@ -461,6 +466,7 @@ class MetaborgRelengBuild(cli.Application):
     builder.mavenOpts = '-Xss{} -Xms{} -Xmx{}'.format(self.stack, self.minHeap, self.maxHeap)
 
     builder.gradleNoNative = self.noNative
+    builder.gradleDaemon = False if self.noDaemon else None
 
     try:
       builder.build(*components)

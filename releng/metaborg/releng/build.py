@@ -45,6 +45,7 @@ class RelengBuilder(object):
     self.mavenOpts = None
 
     self.gradleNoNative = False
+    self.gradleDaemon = None
 
     builder = Builder(copyOptions=True, dependencyAnalysis=buildDeps)
     self.__builder = builder
@@ -75,7 +76,8 @@ class RelengBuilder(object):
     eclipse = add_main_target('eclipse', allLangDeps + [eclipsePrereqs], RelengBuilder.__build_eclipse)
 
     intellijPrereqs = add_main_target('intellij-prereqs', allLangDeps + [], RelengBuilder.__build_intellij_prereqs)
-    add_main_target('intellij', allLangDeps + [intellijPrereqs], RelengBuilder.__build_intellij)
+    intellijJps = add_main_target('intellij-jps', allLangDeps + [intellijPrereqs], RelengBuilder.__build_intellij_jps)
+    add_main_target('intellij', allLangDeps + [intellijJps], RelengBuilder.__build_intellij)
 
     builder.add_target('all', mainTargets)
 
@@ -136,9 +138,7 @@ class RelengBuilder(object):
     gradle.quiet = self.quiet
     gradle.mavenLocalRepo = self.mavenLocalRepo
     gradle.noNative = self.gradleNoNative
-    # Disable the Gradle daemon; it causes issues on the build farm?
-    # FIXME: Make this an option `gradle.daemon = False` in gradlepy.
-    gradle.env['GRADLE_OPTS'] = '-Dorg.gradle.daemon=false'
+    gradle.daemon = self.gradleDaemon
 
     if self.mavenCleanLocalRepo:
       print(figlet.renderText('Cleaning local maven repository'))
@@ -354,7 +354,13 @@ class RelengBuilder(object):
   @staticmethod
   def __build_intellij_prereqs(basedir, gradle, **_):
     target = 'publishToMavenLocal'  # TODO: Deploy
-    cwd = os.path.join(basedir, 'spoofax-intellij', 'org.metaborg.intellij', 'deps')
+    cwd = os.path.join(basedir, 'spoofax-intellij', 'org.metaborg.jps-deps')
+    gradle.run_in_dir(cwd, target)
+
+  @staticmethod
+  def __build_intellij_jps(basedir, gradle, **_):
+    target = 'install'  # TODO: Deploy
+    cwd = os.path.join(basedir, 'spoofax-intellij', 'org.metaborg.jps')
     gradle.run_in_dir(cwd, target)
 
   @staticmethod
