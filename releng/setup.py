@@ -9,5 +9,5 @@ setup(
   author_email='g.d.p.konat@tudelft.nl',
   license='Apache 2.0',
   packages=['metaborg'],
-  install_requires=['buildorchestra>=0.1.2', 'mavenpy>=0.1.2', 'gradlepy>=0.1.1', 'eclipsegen>=0.1.0']
+  install_requires=['buildorchestra>=0.1.2', 'mavenpy>=0.1.2', 'gradlepy>=0.1.2', 'eclipsegen>=0.1.0', 'pyfiglet==0.7.5']
 )

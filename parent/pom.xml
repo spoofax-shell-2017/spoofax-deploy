@@ -23,9 +23,6 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <java-version>1.7</java-version>
-
-    <deployFileUrl>${project.distributionManagement.snapshotRepository.url}</deployFileUrl>
-    <deployRepositoryId>metaborg-nexus</deployRepositoryId>
   </properties>
 
   <repositories>
@@ -485,7 +482,7 @@
           </configuration>
         </plugin>
 
-        <!-- Don't warn about missing m2e mapping for several goals. This plugin's configuration is used to store
+        <!-- Don't warn about missing m2e mapping for several goals. This plugin's configuration is used to store 
           Eclipse m2e settings only. It has no influence on the Maven build itself. -->
         <plugin>
           <groupId>org.eclipse.m2e</groupId>
@@ -570,9 +567,6 @@
   <profiles>
     <profile>
       <id>release</id>
-      <properties>
-        <deployFileUrl>${project.distributionManagement.repository.url}</deployFileUrl>
-      </properties>
       <build>
         <plugins>
           <plugin>
@@ -613,17 +607,6 @@
     <developerConnection>scm:git:git@github.com:metaborg/spoofax-deploy.git</developerConnection>
     <url>https://github.com/metaborg/spoofax-deploy</url>
   </scm>
-
-  <distributionManagement>
-    <snapshotRepository>
-      <id>${deployRepositoryId}</id>
-      <url>http://artifacts.metaborg.org/content/repositories/snapshots/</url>
-    </snapshotRepository>
-    <repository>
-      <id>${deployRepositoryId}</id>
-      <url>http://artifacts.metaborg.org/content/repositories/releases/</url>
-    </repository>
-  </distributionManagement>
 
   <licenses>
     <license>
