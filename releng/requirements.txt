@@ -5,5 +5,5 @@ requests>=2.7.0
 wand>=0.4.1
 buildorchestra>=0.1.2
 mavenpy>=0.1.2
-gradlepy>=0.1.1
+gradlepy>=0.1.2
 eclipsegen==0.1.0
