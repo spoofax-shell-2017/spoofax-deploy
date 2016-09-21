@@ -2,13 +2,14 @@ import glob
 import os
 import shutil
 
-from gradlepy.run import Gradle
-
-from mavenpy.run import Maven
-
-from eclipsegen.generate import EclipseConfiguration
 from buildorchestra.build import Builder
 from buildorchestra.result import StepResult, Artifact
+from gradlepy.run import Gradle
+from mavenpy.run import Maven
+from pyfiglet import Figlet
+
+from eclipsegen.generate import EclipseConfiguration
+from metaborg.releng.deploy import DeployKind, MetaborgDeploy
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
 from metaborg.util.git import create_qualifier
 
@@ -20,11 +21,9 @@ class RelengBuilder(object):
     self.copyArtifactsTo = None
 
     self.clean = True
-    self.deploy = False
-    self.release = False
+    self.deployKind = DeployKind.none.value
 
     self.skipTests = False
-    self.skipExpensive = False
 
     self.offline = False
 
@@ -91,6 +90,10 @@ class RelengBuilder(object):
     return self.__builder.all_steps_ordered
 
   def build(self, *targets):
+    figlet = Figlet(width=200)
+
+    basedir = self.__repo.working_tree_dir
+
     buildStratego = self.buildStratego
     if self.bootstrapStratego:
       buildStratego = True
@@ -103,6 +106,7 @@ class RelengBuilder(object):
     maven = Maven()
     maven.errors = True
     maven.batch = True
+    # Disable annoying warnings when using Cygwin on Windows.
     maven.env['CYGWIN'] = 'nodosfilewarning'
     if self.clean:
       maven.targets.append('clean')
@@ -114,8 +118,13 @@ class RelengBuilder(object):
       maven.properties['generate-javadoc'] = True
     maven.settingsFile = self.mavenSettingsFile
     maven.globalSettingsFile = self.mavenGlobalSettingsFile
-    if self.release:
-      maven.profiles.append('release')
+    if self.deployKind:
+      # Always deploy locally first. If build succeeds, copy locally deployed artifacts to remote artifact server.
+      MetaborgDeploy.maven_local_deploy_clean(basedir)
+      maven.properties.update(MetaborgDeploy.maven_local_deploy_properties(basedir))
+      if not self.deployKind.mavenIsSnapshot:
+        maven.profiles.append('release')
+    # Disable snapshot repositories for build isolation.
     maven.profiles.append('!add-metaborg-snapshot-repos')
     maven.profiles.append('!add-spoofax-eclipse-repos')
     maven.localRepo = self.mavenLocalRepo
@@ -132,16 +141,17 @@ class RelengBuilder(object):
     gradle.daemon = self.gradleDaemon
 
     if self.mavenCleanLocalRepo:
+      print(figlet.renderText('Cleaning local maven repository'))
       # TODO: self.mavenLocalRepo can be None
       _clean_local_repo(self.mavenLocalRepo)
 
+    print(figlet.renderText('Building'))
     result = self.__builder.build(
       *targets,
-      basedir=self.__repo.working_tree_dir,
-      deploy=self.deploy,
-      release=self.release,
+      basedir=basedir,
+      deploy=self.deployKind is not None,
+      deployKind=self.deployKind,
       skipTests=self.skipTests,
-      skipExpensive=self.skipExpensive,
       qualifier=qualifier,
       buildStratego=buildStratego,
       bootstrapStratego=self.bootstrapStratego,
@@ -149,7 +159,13 @@ class RelengBuilder(object):
       maven=maven,
       gradle=gradle
     )
+
+    if self.deployKind:
+      print(figlet.renderText('Deploying Maven artifacts'))
+      MetaborgDeploy.maven_remote_deploy(basedir, self.deployKind.mavenIdentifier, self.deployKind.mavenUrl)
+
     if self.copyArtifactsTo:
+      print(figlet.renderText('Copying local artifacts'))
       copyTo = _make_abs(self.copyArtifactsTo, self.__repo.working_tree_dir)
       result.copy_to(copyTo)
 
@@ -162,8 +178,8 @@ class RelengBuilder(object):
     maven.run_in_dir(cwd, target)
 
   @staticmethod
-  def __build_premade_jars(basedir, deploy, release, maven, **_):
-    target = 'deploy:deploy-file' if deploy else 'install:install-file'
+  def __build_premade_jars(basedir, deployKind, maven, **_):
+    target = 'deploy:deploy-file' if deployKind else 'install:install-file'
 
     cwd = os.path.join(basedir, 'releng', 'parent')
 
@@ -172,19 +188,14 @@ class RelengBuilder(object):
     makePermissivePom = os.path.join(makePermissivePath, 'pom.xml')
     makePermissiveJar = os.path.join(makePermissivePath, 'make-permissive.jar')
 
-    repositoryId = "metaborg-nexus"
-    if release:
-      deployUrl = 'http://artifacts.metaborg.org/content/repositories/in4303/'
-    else:
-      deployUrl = 'http://artifacts.metaborg.org/content/repositories/in4303/'
-
     if 'clean' in maven.targets:
       maven.targets.remove('clean')
-    properties = {'pomFile': makePermissivePom,
-      'file'               : makePermissiveJar,
-      'repositoryId'       : repositoryId,
-      'url'                : deployUrl
+    properties = {
+      'pomFile': makePermissivePom,
+      'file'   : makePermissiveJar,
     }
+    if deployKind:
+      properties.update(MetaborgDeploy.maven_local_file_deploy_properties(basedir))
     maven.run_in_dir(cwd, target, **properties)
 
   @staticmethod
@@ -207,7 +218,7 @@ class RelengBuilder(object):
     maven.run(cwd, 'download-pom.xml', 'dependency:resolve')
 
   @staticmethod
-  def __build_strategoxt(basedir, deploy, bootstrapStratego, testStratego, skipTests, skipExpensive, maven, **_):
+  def __build_strategoxt(basedir, deploy, bootstrapStratego, testStratego, skipTests, maven, **_):
     target = 'deploy' if deploy else 'install'
 
     # Build StrategoXT
@@ -215,10 +226,7 @@ class RelengBuilder(object):
       buildFile = os.path.join('bootstrap-pom.xml')
     else:
       buildFile = os.path.join('build-pom.xml')
-    if skipExpensive:
-      properties = {'strategoxt-skip-build': True, 'strategoxt-skip-test': True}
-    else:
-      properties = {'strategoxt-skip-test': skipTests or not testStratego}
+    properties = {'strategoxt-skip-test': skipTests or not testStratego}
     strategoXtDir = os.path.join(basedir, 'strategoxt', 'strategoxt')
     maven.run(strategoXtDir, buildFile, target, **properties)
 
@@ -280,11 +288,10 @@ class RelengBuilder(object):
     maven.run_in_dir(cwd, target)
 
   @staticmethod
-  def __build_languages(basedir, deploy, skipExpensive, maven, **_):
+  def __build_languages(basedir, deploy, maven, **_):
     target = 'deploy' if deploy else 'install'
-    properties = {'spoofax.skip': True} if skipExpensive else {}
     cwd = os.path.join(basedir, 'releng', 'build', 'language')
-    maven.run_in_dir(cwd, target, **properties)
+    maven.run_in_dir(cwd, target)
 
   @staticmethod
   def __build_dynsem(basedir, deploy, maven, **_):
@@ -296,11 +303,10 @@ class RelengBuilder(object):
     maven.run_in_dir(cwd, target)
 
   @staticmethod
-  def __build_spt(basedir, deploy, skipExpensive, maven, **_):
+  def __build_spt(basedir, deploy, maven, **_):
     target = 'deploy' if deploy else 'install'
-    properties = {'spoofax.skip': True} if skipExpensive else {}
     cwd = os.path.join(basedir, 'releng', 'build', 'language', 'spt')
-    maven.run_in_dir(cwd, target, **properties)
+    maven.run_in_dir(cwd, target)
     return StepResult([
       Artifact('SPT testrunner JAR', _glob_one(os.path.join(basedir,
         'spt/org.metaborg.spt.cmd/target/org.metaborg.spt.cmd-*.jar')), 'spoofax-testrunner.jar'),

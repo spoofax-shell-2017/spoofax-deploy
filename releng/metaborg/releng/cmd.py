@@ -2,10 +2,11 @@ from os import path
 
 from git.repo.base import Repo
 from plumbum import cli
-from eclipsegen.generate import EclipseConfiguration
 
+from eclipsegen.generate import EclipseConfiguration
 from metaborg.releng.bootstrap import Bootstrap
 from metaborg.releng.build import RelengBuilder
+from metaborg.releng.deploy import DeployKind
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
 from metaborg.releng.icon import GenerateIcons
 from metaborg.releng.maven import MetaborgMavenSettingsGeneratorGenerator
@@ -334,20 +335,9 @@ class MetaborgRelengBuild(cli.Application):
     help='Do not build dependencies, just build given components',
     group='Build switches'
   )
-  deploy = cli.Flag(
-    names=['-d', '--deploy'], default=False,
-    help='Deploy after building',
-    group='Build switches'
-  )
-  release = cli.Flag(
-    names=['-r', '--release'], default=False,
-    help='Perform a release build. Checks whether all dependencies are release versions, fails the build if not',
-    group='Build switches'
-  )
-  skipExpensive = cli.Flag(
-    names=['-k', '--skip-expensive'], default=False,
-    requires=['--no-clean'], excludes=['--clean-repo'],
-    help='Skip expensive build steps such as Spoofax language builds. Typically used after a regular build to deploy more quickly',
+  deployKindStr = cli.SwitchAttr(
+    names=['-d', '--deploy'], argtype=str, default=None,
+    help='Deploy artifacts to an artifact server. Choose from: {}'.format(', '.join(DeployKind.keys())),
     group='Build switches'
   )
   copyArtifacts = cli.SwitchAttr(
@@ -442,11 +432,13 @@ class MetaborgRelengBuild(cli.Application):
     builder.copyArtifactsTo = self.copyArtifacts
 
     builder.clean = not self.noClean
-    builder.deploy = self.deploy
-    builder.release = self.release
+    if self.deployKindStr:
+      if not DeployKind.exists(self.deployKindStr):
+        print('ERROR: deploy kind {} does not exist'.format(self.deployKindStr))
+        return 1
+      builder.deployKind = DeployKind[self.deployKindStr].value
 
     builder.skipTests = self.skipTests
-    builder.skipExpensive = self.skipExpensive
 
     builder.offline = self.offline
 

@@ -7,3 +7,4 @@ buildorchestra>=0.1.2
 mavenpy>=0.1.2
 gradlepy>=0.1.2
 eclipsegen==0.1.0
+pyfiglet==0.7.5
