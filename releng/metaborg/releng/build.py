@@ -46,7 +46,7 @@ class RelengBuilder(object):
     self.mavenOpts = None
 
     self.gradleNoNative = False
-    self.gradleOpts = '-Dorg.gradle.daemon=false'
+    self.gradleDaemon = None
 
     builder = Builder(copyOptions=True, dependencyAnalysis=buildDeps)
     self.__builder = builder
@@ -129,11 +129,7 @@ class RelengBuilder(object):
     gradle.quiet = self.quiet
     gradle.mavenLocalRepo = self.mavenLocalRepo
     gradle.noNative = self.gradleNoNative
-    # Disable the Gradle daemon; it causes issues on the build farm?
-    # FIXME: Instead, set on the server envvar GRADLE_OPTS to:
-    # -  Dorg.gradle.daemon=false
-    # To not impact local builds.
-    gradle.daemon = False
+    gradle.daemon = self.gradleDaemon
 
     if self.mavenCleanLocalRepo:
       # TODO: self.mavenLocalRepo can be None
