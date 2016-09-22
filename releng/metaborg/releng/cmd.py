@@ -1,3 +1,4 @@
+import os
 from os import path
 
 from git.repo.base import Repo
@@ -10,7 +11,7 @@ from metaborg.releng.deploy import DeployKind
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
 from metaborg.releng.icon import GenerateIcons
 from metaborg.releng.maven import MetaborgMavenSettingsGeneratorGenerator
-from metaborg.releng.release import Release
+from metaborg.releng.release import MetaborgRelease
 from metaborg.releng.versions import SetVersions
 from metaborg.util.git import (CheckoutAll, CleanAll, MergeAll, PushAll,
   RemoteType, ResetAll, SetRemoteAll, TagAll,
@@ -351,6 +352,22 @@ class MetaborgRelengBuild(cli.Application):
     group='Build switches'
   )
 
+  stack = cli.SwitchAttr(
+    names=['--stack'], default="16M",
+    help="JVM stack size",
+    group='JVM switches'
+  )
+  minHeap = cli.SwitchAttr(
+    names=['--min-heap'], default="2G",
+    help="JVM minimum heap size",
+    group='JVM switches'
+  )
+  maxHeap = cli.SwitchAttr(
+    names=['--max-heap'], default="2G",
+    help="JVM maximum heap size",
+    group='JVM switches'
+  )
+
   noClean = cli.Flag(
     names=['-u', '--no-clean'], default=False,
     help='Do not run the clean phase in Maven builds',
@@ -404,20 +421,22 @@ class MetaborgRelengBuild(cli.Application):
     group='Gradle switches'
   )
 
-  stack = cli.SwitchAttr(
-    names=['--stack'], default="16M",
-    help="JVM stack size",
-    group='JVM switches'
+  bintrayUsername = cli.SwitchAttr(
+    names=['--bintray-username'], argtype=str, default=None,
+    help='Bintray username to use for deploying. When not set, defaults to the BINTRAY_USERNAME environment variable. '
+         'When the environment variable is also not set, deploying to bintray is disabled',
+    group='Bintray switches'
   )
-  minHeap = cli.SwitchAttr(
-    names=['--min-heap'], default="2G",
-    help="JVM minimum heap size",
-    group='JVM switches'
+  bintrayKey = cli.SwitchAttr(
+    names=['--bintray-key'], argtype=str, default=None,
+    help='Bintray key to use for deploying. When not set, defaults to the BINTRAY_KEY environment variable. '
+         'When the environment variable is also not set, deploying to bintray is disabled',
+    group='Bintray switches'
   )
-  maxHeap = cli.SwitchAttr(
-    names=['--max-heap'], default="2G",
-    help="JVM maximum heap size",
-    group='JVM switches'
+  bintrayVersion = cli.SwitchAttr(
+    names=['--bintray-version'], argtype=str, default=None,
+    help='Version to use for deploying to Bintray. When not set, deploying to bintray is disabled',
+    group='Bintray switches'
   )
 
   def main(self, *components):
@@ -468,6 +487,10 @@ class MetaborgRelengBuild(cli.Application):
     builder.gradleNoNative = self.noNative
     builder.gradleDaemon = False if self.noDaemon else None
 
+    builder.bintrayUsername = self.bintrayUsername or os.environ.get('BINTRAY_USERNAME')
+    builder.bintrayKey = self.bintrayKey or os.environ.get('BINTRAY_KEY')
+    builder.bintrayVersion = self.bintrayVersion
+
     try:
       builder.build(*components)
       return 0
@@ -482,20 +505,52 @@ class MetaborgRelengRelease(cli.Application):
   Performs an interactive release to deploy a new release version
   """
 
-  releaseBranch = cli.SwitchAttr(names=['--rel-branch'], argtype=str, mandatory=True,
-    help="Release branch")
-  developBranch = cli.SwitchAttr(names=['--dev-branch'], argtype=str, mandatory=True,
-    help="Development branch")
+  nextDevelopVersion = cli.SwitchAttr(
+    names=['-e', '--next-develop-version'], argtype=str, default=None,
+    help='Maven version to set on the development branch after releasing. If not set, the development branch is left untouched',
+  )
 
-  curDevelopVersion = cli.SwitchAttr(names=['--cur-dev-ver'], argtype=str, mandatory=True,
-    help="Current Maven version in the development branch")
-  nextReleaseVersion = cli.SwitchAttr(names=['--next-rel-ver'], argtype=str, mandatory=True,
-    help="Next Maven version in the release branch")
-  nextDevelopVersion = cli.SwitchAttr(names=['--next-dev-ver'], argtype=str, mandatory=True,
-    help="Next Maven version in the development branch")
+  deployKindStr = cli.SwitchAttr(
+    names=['-d', '--deploy-kind'], argtype=str, mandatory=True,
+    help='Kind of release, to determine where to deploy artifacts. Choose from: {}'.format(
+      ', '.join(DeployKind.keys())),
+  )
 
-  def main(self):
-    print('Performing interactive release')
+  bootstrapStratego = cli.Flag(
+    names=['-b', '--bootstrap-stratego'], default=False,
+    help='Bootstrap StrategoXT instead of building it',
+    group='StrategoXT switches'
+  )
+  noStrategoTest = cli.Flag(
+    names=['-t', '--no-stratego-test'], default=False,
+    help='Skip StrategoXT tests',
+    group='StrategoXT switches'
+  )
+
+  bintrayUsername = cli.SwitchAttr(
+    names=['--bintray-username'], argtype=str, default=None,
+    help='Bintray username to use for deploying. When not set, defaults to the BINTRAY_USERNAME environment variable. '
+         'When the environment variable is also not set, deploying to bintray is disabled',
+    group='Bintray switches'
+  )
+  bintrayKey = cli.SwitchAttr(
+    names=['--bintray-key'], argtype=str, default=None,
+    help='Bintray key to use for deploying. When not set, defaults to the BINTRAY_KEY environment variable. '
+         'When the environment variable is also not set, deploying to bintray is disabled',
+    group='Bintray switches'
+  )
+
+  def main(self, releaseBranch, nextReleaseVersion, developBranch, curDevelopVersion):
+    """
+    Performs an interactive release to deploy a new release version
+
+    :param releaseBranch: Git branch to release to
+    :param nextReleaseVersion: Next Maven version for the release branch
+
+    :param developBranch: Git development branch to release from
+    :param curDevelopVersion: Current Maven version for the development branch
+    :return:
+    """
 
     repo = self.parent.repo
     repoDir = repo.working_tree_dir
@@ -506,8 +561,34 @@ class MetaborgRelengRelease(cli.Application):
         'using the -r/--repo switch.')
       return 1
 
-    Release(repo, self.releaseBranch, self.developBranch, self.curDevelopVersion, self.nextReleaseVersion,
-      self.nextDevelopVersion)
+    if not DeployKind.exists(self.deployKindStr):
+      print('ERROR: deploy kind {} does not exist'.format(self.deployKindStr))
+      return 1
+    deployKind = DeployKind[self.deployKindStr].value
+    if not deployKind.bintrayRepoName:
+      print('ERROR: no Bintray repository was set, cannot deploy. Choose a different deploy kind')
+      return 1
+    if deployKind.mavenIsSnapshot:
+      print('ERROR: cannot release snapshots. Choose a different deploy kind')
+      return 1
+
+    release = MetaborgRelease(repo, releaseBranch, nextReleaseVersion, developBranch, curDevelopVersion, deployKind)
+
+    release.nextDevelopVersion = self.nextDevelopVersion
+
+    release.bootstrapStratego = self.bootstrapStratego
+    release.testStratego = not self.noStrategoTest
+
+    release.bintrayUsername = self.bintrayUsername or os.environ.get('BINTRAY_USERNAME')
+    release.bintrayKey = self.bintrayKey or os.environ.get('BINTRAY_KEY')
+
+    if not (release.bintrayUsername and release.bintrayKey):
+      print('ERROR: no Bintray username and/or key was set, cannot deploy')
+      return 1
+
+    print('Performing release')
+    release.release()
+
     return 0
 
 

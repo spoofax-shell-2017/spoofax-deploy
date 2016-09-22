@@ -9,7 +9,7 @@ from mavenpy.run import Maven
 from pyfiglet import Figlet
 
 from eclipsegen.generate import EclipseConfiguration
-from metaborg.releng.deploy import DeployKind, MetaborgDeploy
+from metaborg.releng.deploy import DeployKind, MetaborgDeploy, MetaborgArtifact
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
 from metaborg.util.git import create_qualifier
 
@@ -18,9 +18,9 @@ class RelengBuilder(object):
   def __init__(self, repo, buildDeps=True):
     self.__repo = repo
 
-    self.copyArtifactsTo = None
-
     self.clean = True
+
+    self.copyArtifactsTo = None
     self.deployKind = DeployKind.none.value
 
     self.skipTests = False
@@ -46,6 +46,10 @@ class RelengBuilder(object):
 
     self.gradleNoNative = False
     self.gradleDaemon = None
+
+    self.bintrayUsername = None
+    self.bintrayKey = None
+    self.bintrayVersion = None
 
     builder = Builder(copyOptions=True, dependencyAnalysis=buildDeps)
     self.__builder = builder
@@ -90,9 +94,12 @@ class RelengBuilder(object):
     return self.__builder.all_steps_ordered
 
   def build(self, *targets):
-    figlet = Figlet(width=200)
-
     basedir = self.__repo.working_tree_dir
+
+    if self.deployKind:
+      deployer = MetaborgDeploy(basedir, self.deployKind, self.bintrayUsername, self.bintrayKey, self.bintrayVersion)
+
+    figlet = Figlet(width=200)
 
     buildStratego = self.buildStratego
     if self.bootstrapStratego:
@@ -120,8 +127,8 @@ class RelengBuilder(object):
     maven.globalSettingsFile = self.mavenGlobalSettingsFile
     if self.deployKind:
       # Always deploy locally first. If build succeeds, copy locally deployed artifacts to remote artifact server.
-      MetaborgDeploy.maven_local_deploy_clean(basedir)
-      maven.properties.update(MetaborgDeploy.maven_local_deploy_properties(basedir))
+      deployer.maven_local_deploy_clean()
+      maven.properties.update(deployer.maven_local_deploy_properties())
       if not self.deployKind.mavenIsSnapshot:
         maven.profiles.append('release')
     # Disable snapshot repositories for build isolation.
@@ -160,12 +167,21 @@ class RelengBuilder(object):
       gradle=gradle
     )
 
+    if not result:
+      return
+
     if self.deployKind:
       print(figlet.renderText('Deploying Maven artifacts'))
-      MetaborgDeploy.maven_remote_deploy(basedir, self.deployKind.mavenIdentifier, self.deployKind.mavenUrl)
+      deployer.maven_remote_deploy()
+      if not (self.bintrayUsername and self.bintrayKey and self.bintrayVersion and self.deployKind.bintrayRepoName):
+        print('Not deploying artifacts to Bintray: username, key, repository, or version was not set')
+      else:
+        print(figlet.renderText('Deploying other artifacts'))
+        for artifact in result.artifacts:
+          deployer.artifact_remote_deploy(artifact)
 
     if self.copyArtifactsTo:
-      print(figlet.renderText('Copying local artifacts'))
+      print(figlet.renderText('Copying other artifacts'))
       copyTo = _make_abs(self.copyArtifactsTo, self.__repo.working_tree_dir)
       result.copy_to(copyTo)
 
@@ -179,11 +195,9 @@ class RelengBuilder(object):
 
   @staticmethod
   def __build_premade_jars(basedir, deployKind, maven, **_):
-    target = 'deploy:deploy-file' if deployKind else 'install:install-file'
-
     cwd = os.path.join(basedir, 'releng', 'parent')
 
-    # Install make-permissive
+    # Install and deploy make-permissive
     makePermissivePath = os.path.join(basedir, 'jsglr', 'make-permissive', 'jar')
     makePermissivePom = os.path.join(makePermissivePath, 'pom.xml')
     makePermissiveJar = os.path.join(makePermissivePath, 'make-permissive.jar')
@@ -194,9 +208,10 @@ class RelengBuilder(object):
       'pomFile': makePermissivePom,
       'file'   : makePermissiveJar,
     }
+    maven.run_in_dir(cwd, 'install:install-file', **properties)
     if deployKind:
       properties.update(MetaborgDeploy.maven_local_file_deploy_properties(basedir))
-    maven.run_in_dir(cwd, target, **properties)
+      maven.run_in_dir(cwd, 'deploy:deploy-file', **properties)
 
   @staticmethod
   def __build_or_download_strategoxt(buildStratego, **kwargs):
@@ -241,13 +256,10 @@ class RelengBuilder(object):
       distribDir = os.path.join(strategoXtDir, 'buildpoms', 'build', 'target')
 
     return StepResult([
-      Artifact('StrategoXT distribution', _glob_one('{}/strategoxt-distrib-*-bin.tar'.format(distribDir)),
-        'strategoxt-distrib.tar'),
-      Artifact('StrategoXT JAR', '{}/dist/share/strategoxt/strategoxt/strategoxt.jar'.format(distribDir),
-        'strategoxt.jar'),
-      Artifact('StrategoXT minified JAR',
-        _glob_one('{}/buildpoms/minjar/target/strategoxt-min-jar-*.jar'.format(strategoXtDir)),
-        'strategoxt-min.jar'),
+      MetaborgArtifact('StrategoXT distribution', 'strategoxt-distrib',
+        _glob_one('{}/strategoxt-distrib-*-bin.tar'.format(distribDir)), 'strategoxt-distrib.tar'),
+      MetaborgArtifact('StrategoXT JAR', 'strategoxt-jar',
+        '{}/dist/share/strategoxt/strategoxt/strategoxt.jar'.format(distribDir), 'strategoxt.jar')
     ])
 
   @staticmethod
@@ -256,7 +268,7 @@ class RelengBuilder(object):
     cwd = os.path.join(basedir, 'releng', 'build', 'java')
     maven.run_in_dir(cwd, target, forceContextQualifier=qualifier)
     return StepResult([
-      Artifact('Spoofax sunshine JAR', _glob_one(
+      MetaborgArtifact('Spoofax sunshine JAR', 'spoofax-sunshine', _glob_one(
         os.path.join(basedir, 'spoofax-sunshine/org.metaborg.sunshine2/target/org.metaborg.sunshine2-*.jar')),
         'spoofax-sunshine.jar'),
     ])
@@ -267,8 +279,8 @@ class RelengBuilder(object):
     cwd = os.path.join(basedir, 'spoofax', 'org.metaborg.spoofax.core.uber')
     maven.run_in_dir(cwd, target)
     return StepResult([
-      Artifact('Spoofax uber JAR', _glob_one(os.path.join(cwd, 'target/org.metaborg.spoofax.core.uber-*.jar')),
-        'spoofax-uber.jar'),
+      MetaborgArtifact('Spoofax uber JAR', 'spoofax-core-uber',
+        _glob_one(os.path.join(cwd, 'target/org.metaborg.spoofax.core.uber-*.jar')), 'spoofax-uber.jar'),
     ])
 
   @staticmethod
@@ -277,8 +289,8 @@ class RelengBuilder(object):
     cwd = os.path.join(basedir, 'releng', 'build', 'libs')
     maven.run_in_dir(cwd, target)
     return StepResult([
-      Artifact('Spoofax libraries JAR', _glob_one(os.path.join(basedir, 'releng/build/libs/target/build.libs-*.jar')),
-        'spoofax-libs.jar'),
+      MetaborgArtifact('Spoofax libraries JAR', None,
+        _glob_one(os.path.join(basedir, 'releng/build/libs/target/build.libs-*.jar')), 'spoofax-libs.jar'),
     ])
 
   @staticmethod
@@ -308,7 +320,7 @@ class RelengBuilder(object):
     cwd = os.path.join(basedir, 'releng', 'build', 'language', 'spt')
     maven.run_in_dir(cwd, target)
     return StepResult([
-      Artifact('SPT testrunner JAR', _glob_one(os.path.join(basedir,
+      MetaborgArtifact('SPT testrunner JAR', 'spt-testrunner', _glob_one(os.path.join(basedir,
         'spt/org.metaborg.spt.cmd/target/org.metaborg.spt.cmd-*.jar')), 'spoofax-testrunner.jar'),
     ])
 
@@ -324,9 +336,8 @@ class RelengBuilder(object):
     cwd = os.path.join(basedir, 'releng', 'build', 'eclipse')
     maven.run_in_dir(cwd, target, forceContextQualifier=qualifier)
     return StepResult([
-      Artifact('Spoofax Eclipse update site', os.path.join(basedir,
-        'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/site_assembly.zip'),
-        'spoofax-eclipse.zip'),
+      MetaborgArtifact('Spoofax Eclipse update site', 'spoofax-eclipse-updatesite', os.path.join(basedir,
+        'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/site_assembly.zip'), 'spoofax-eclipse.zip'),
     ])
 
   @staticmethod
