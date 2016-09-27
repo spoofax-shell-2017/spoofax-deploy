@@ -72,7 +72,7 @@ class MetaborgEclipseGenerator(EclipseGenerator):
   ]
 
   spoofaxRepo = 'http://download.spoofax.org/update/nightly/'
-  spoofaxRepoLocal = 'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/repository'
+  spoofaxRepoLocal = 'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/site'
   spoofaxIUs = ['org.metaborg.spoofax.eclipse.feature.feature.group']
   spoofaxLangDevIUs = [
     'org.metaborg.spoofax.eclipse.meta.feature.feature.group',
