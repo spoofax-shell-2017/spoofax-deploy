@@ -85,5 +85,5 @@ class MetaborgDeploy(object):
       print("Skipping deployment of artifact '{}' to Bintray, it has no package name, no version was set, "
             "or no bintray repository was set".format(artifact.name))
       return
-    self.bintray.upload_generic('metaborg', bintrayRepoName, artifact.package, self.bintrayVersion, artifact.location,
+    self.bintray.upload_generic('metaborg', bintrayRepoName, artifact.package, self.bintrayVersion, artifact.target,
       publish=True)
