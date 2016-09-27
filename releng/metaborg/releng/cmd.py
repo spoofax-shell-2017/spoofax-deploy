@@ -4,7 +4,7 @@ from os import path
 from git.repo.base import Repo
 from plumbum import cli
 
-from eclipsegen.generate import EclipseConfiguration
+from eclipsegen.generate import Os, Arch
 from metaborg.releng.bootstrap import Bootstrap
 from metaborg.releng.build import RelengBuilder
 from metaborg.releng.deploy import DeployKind
@@ -661,10 +661,26 @@ class MetaborgRelengGenEclipse(cli.Application):
   def main(self):
     print('Generating plain Eclipse instance')
 
+    if self.os:
+      if not Os.exists(self.os):
+        print('ERROR: operating system {} does not exist'.format(self.os))
+        return 1
+      eclipseOs = Os[self.os].value
+    else:
+      eclipseOs = Os.get_current()
+
+    if self.arch:
+      if not Arch.exists(self.arch):
+        print('ERROR: architecture {} does not exist'.format(self.arch))
+        return 1
+      eclipseArch = Arch[self.arch].value
+    else:
+      eclipseArch = Arch.get_current()
+
     generator = MetaborgEclipseGenerator(self.parent.repo.working_tree_dir, self.destination,
-      EclipseConfiguration(os=self.os, arch=self.arch), spoofax=False, moreRepos=self.moreRepos, moreIUs=self.moreIUs,
-      archive=self.archive)
-    generator.generate(fixIni=True, addJre=self.addJre, archiveJreSeparately=self.archiveJreSeparately)
+      spoofax=False, moreRepos=self.moreRepos, moreIUs=self.moreIUs)
+    generator.generate(os=eclipseOs, arch=eclipseArch, fixIni=True, addJre=self.addJre,
+      archiveJreSeparately=self.archiveJreSeparately, archive=self.archive)
 
     return 0
 
@@ -733,12 +749,28 @@ class MetaborgRelengGenSpoofax(cli.Application):
   def main(self):
     print('Generating Eclipse instance for Spoofax users')
 
+    if self.os:
+      if not Os.exists(self.os):
+        print('ERROR: operating system {} does not exist'.format(self.os))
+        return 1
+      eclipseOs = Os[self.os].value
+    else:
+      eclipseOs = Os.get_current()
+
+    if self.arch:
+      if not Arch.exists(self.arch):
+        print('ERROR: architecture {} does not exist'.format(self.arch))
+        return 1
+      eclipseArch = Arch[self.arch].value
+    else:
+      eclipseArch = Arch.get_current()
+
     generator = MetaborgEclipseGenerator(self.parent.repo.working_tree_dir, self.destination,
-      EclipseConfiguration(os=self.os, arch=self.arch), spoofax=True, spoofaxRepo=self.spoofaxRepo,
+      spoofax=True, spoofaxRepo=self.spoofaxRepo,
       spoofaxRepoLocal=self.localSpoofax, langDev=not self.noMeta, lwbDev=not self.noMeta, moreRepos=self.moreRepos,
-      moreIUs=self.moreIUs, archive=self.archive)
-    generator.generate(fixIni=True, addJre=self.addJre, archiveJreSeparately=self.archiveJreSeparately,
-      archivePrefix='spoofax')
+      moreIUs=self.moreIUs)
+    generator.generate(os=eclipseOs, arch=eclipseArch, fixIni=True, addJre=self.addJre,
+      archiveJreSeparately=self.archiveJreSeparately, archive=self.archive, archivePrefix='spoofax')
 
     return 0
 

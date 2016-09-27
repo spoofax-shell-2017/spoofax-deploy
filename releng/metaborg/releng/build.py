@@ -8,7 +8,7 @@ from gradlepy.run import Gradle
 from mavenpy.run import Maven
 from pyfiglet import Figlet
 
-from eclipsegen.generate import EclipseConfiguration
+from eclipsegen.generate import Os, Arch
 from metaborg.releng.deploy import DeployKind, MetaborgDeploy, MetaborgArtifact
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
 from metaborg.util.git import create_qualifier
@@ -158,6 +158,7 @@ class RelengBuilder(object):
       basedir=basedir,
       deploy=self.deployKind is not None,
       deployKind=self.deployKind,
+      deployer=deployer,
       skipTests=self.skipTests,
       qualifier=qualifier,
       buildStratego=buildStratego,
@@ -194,7 +195,7 @@ class RelengBuilder(object):
     maven.run_in_dir(cwd, target)
 
   @staticmethod
-  def __build_premade_jars(basedir, deployKind, maven, **_):
+  def __build_premade_jars(basedir, deployKind, deployer, maven, **_):
     cwd = os.path.join(basedir, 'releng', 'parent')
 
     # Install and deploy make-permissive
@@ -210,7 +211,7 @@ class RelengBuilder(object):
     }
     maven.run_in_dir(cwd, 'install:install-file', **properties)
     if deployKind:
-      properties.update(MetaborgDeploy.maven_local_file_deploy_properties(basedir))
+      properties.update(deployer.maven_local_file_deploy_properties())
       maven.run_in_dir(cwd, 'deploy:deploy-file', **properties)
 
   @staticmethod
@@ -257,9 +258,11 @@ class RelengBuilder(object):
 
     return StepResult([
       MetaborgArtifact('StrategoXT distribution', 'strategoxt-distrib',
-        _glob_one('{}/strategoxt-distrib-*-bin.tar'.format(distribDir)), 'strategoxt-distrib.tar'),
+        _glob_one('{}/strategoxt-distrib-*-bin.tar'.format(distribDir)),
+        os.path.join('strategoxt', 'distrib.tar')),
       MetaborgArtifact('StrategoXT JAR', 'strategoxt-jar',
-        '{}/dist/share/strategoxt/strategoxt/strategoxt.jar'.format(distribDir), 'strategoxt.jar')
+        '{}/dist/share/strategoxt/strategoxt/strategoxt.jar'.format(distribDir),
+        os.path.join('strategoxt', 'strategoxt.jar')),
     ])
 
   @staticmethod
@@ -270,7 +273,7 @@ class RelengBuilder(object):
     return StepResult([
       MetaborgArtifact('Spoofax sunshine JAR', 'spoofax-sunshine', _glob_one(
         os.path.join(basedir, 'spoofax-sunshine/org.metaborg.sunshine2/target/org.metaborg.sunshine2-*.jar')),
-        'spoofax-sunshine.jar'),
+        os.path.join('spoofax', 'sunshine.jar')),
     ])
 
   @staticmethod
@@ -280,7 +283,8 @@ class RelengBuilder(object):
     maven.run_in_dir(cwd, target)
     return StepResult([
       MetaborgArtifact('Spoofax uber JAR', 'spoofax-core-uber',
-        _glob_one(os.path.join(cwd, 'target/org.metaborg.spoofax.core.uber-*.jar')), 'spoofax-uber.jar'),
+        _glob_one(os.path.join(cwd, 'target/org.metaborg.spoofax.core.uber-*.jar')),
+        os.path.join('spoofax', 'core-uber.jar')),
     ])
 
   @staticmethod
@@ -289,8 +293,9 @@ class RelengBuilder(object):
     cwd = os.path.join(basedir, 'releng', 'build', 'libs')
     maven.run_in_dir(cwd, target)
     return StepResult([
-      MetaborgArtifact('Spoofax libraries JAR', None,
-        _glob_one(os.path.join(basedir, 'releng/build/libs/target/build.libs-*.jar')), 'spoofax-libs.jar'),
+      Artifact('Spoofax libraries JAR',
+        _glob_one(os.path.join(basedir, 'releng/build/libs/target/build.libs-*.jar')),
+        os.path.join('spoofax', 'libs.jar')),
     ])
 
   @staticmethod
@@ -320,8 +325,9 @@ class RelengBuilder(object):
     cwd = os.path.join(basedir, 'releng', 'build', 'language', 'spt')
     maven.run_in_dir(cwd, target)
     return StepResult([
-      MetaborgArtifact('SPT testrunner JAR', 'spt-testrunner', _glob_one(os.path.join(basedir,
-        'spt/org.metaborg.spt.cmd/target/org.metaborg.spt.cmd-*.jar')), 'spoofax-testrunner.jar'),
+      MetaborgArtifact('SPT testrunner JAR', 'spoofax-testrunner',
+        _glob_one(os.path.join(basedir, 'spt/org.metaborg.spt.cmd/target/org.metaborg.spt.cmd-*.jar')),
+        os.path.join('spoofax', 'testrunner.jar')),
     ])
 
   @staticmethod
@@ -336,30 +342,24 @@ class RelengBuilder(object):
     cwd = os.path.join(basedir, 'releng', 'build', 'eclipse')
     maven.run_in_dir(cwd, target, forceContextQualifier=qualifier)
     return StepResult([
-      MetaborgArtifact('Spoofax Eclipse update site', 'spoofax-eclipse-updatesite', os.path.join(basedir,
-        'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/site_assembly.zip'), 'spoofax-eclipse.zip'),
+      MetaborgArtifact('Spoofax Eclipse update site', 'spoofax-eclipse-updatesite',
+        os.path.join(basedir, 'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/site_assembly.zip'),
+        os.path.join('spoofax', 'eclipse', 'updatesite.zip')),
     ])
 
   @staticmethod
   def __build_eclipse_instances(basedir, **_):
     eclipsegenPath = 'eclipsegen'
 
-    def generate(eclipseOs, eclipseArch):
-      generator = MetaborgEclipseGenerator(basedir, eclipsegenPath,
-        EclipseConfiguration(os=eclipseOs, arch=eclipseArch), spoofax=True, spoofaxRepoLocal=True, archive=True)
-      generator.generate(fixIni=True, addJre=True, archiveJreSeparately=True, archivePrefix='spoofax')
+    generator = MetaborgEclipseGenerator(basedir, eclipsegenPath, spoofax=True, spoofaxRepoLocal=True)
+    archives = generator.generate_all(oss=Os.values(), archs=Arch.values(), fixIni=True, addJre=True,
+      archiveJreSeparately=True, archivePrefix='spoofax')
 
-    generate('win32', 'x86')
-    generate('win32', 'x86_64')
-    generate('linux', 'x86')
-    generate('linux', 'x86_64')
-    generate('macosx', 'x86_64')
-
-    archives = glob.glob(os.path.join(basedir, eclipsegenPath, '*'))
     artifacts = []
     for archive in archives:
-      targetName = os.path.join('eclipse', os.path.basename(archive))
-      artifacts.append(Artifact('Spoofax Eclipse instance', archive, targetName))
+      location = archive.location
+      target = os.path.join('spoofax', 'eclipse', os.path.basename(location))
+      artifacts.append(MetaborgArtifact('Spoofax Eclipse instance', 'spoofax-eclipse-installation', location, target))
     return StepResult(artifacts)
 
   @staticmethod
@@ -380,10 +380,10 @@ class RelengBuilder(object):
     cwd = os.path.join(basedir, 'spoofax-intellij', 'org.metaborg.intellij')
     gradle.run_in_dir(cwd, target)
     return StepResult([
-      Artifact('Spoofax for IntelliJ IDEA plugin',
+      MetaborgArtifact('Spoofax for IntelliJ IDEA plugin',
         _glob_one(os.path.join(basedir,
           'spoofax-intellij/org.metaborg.intellij/build/distributions/org.metaborg.intellij-*.zip')),
-        'spoofax-intellij.zip'),
+        os.path.join('spoofax', 'intellij', 'plugin.zip')),
     ])
 
 
