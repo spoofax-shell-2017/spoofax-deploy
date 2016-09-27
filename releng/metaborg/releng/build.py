@@ -343,7 +343,8 @@ class RelengBuilder(object):
     maven.run_in_dir(cwd, target, forceContextQualifier=qualifier)
     return StepResult([
       MetaborgArtifact('Spoofax Eclipse update site', 'spoofax-eclipse-updatesite',
-        os.path.join(basedir, 'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/site_assembly.zip'),
+        _glob_one(os.path.join(basedir,
+          'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/org.metaborg.spoofax.eclipse.updatesite-*.zip')),
         os.path.join('spoofax', 'eclipse', 'updatesite.zip')),
     ])
 
