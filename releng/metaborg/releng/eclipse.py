@@ -134,5 +134,6 @@ class MetaborgEclipseGenerator(object):
     return generator.generate()
 
   def generate_all(self, **kwargs):
-    generator = EclipseMultiGenerator(self.workingDir, self.destination, **kwargs)
+    generator = EclipseMultiGenerator(self.workingDir, self.destination, repositories=self.repos, installUnits=self.ius,
+      **kwargs)
     return generator.generate()
