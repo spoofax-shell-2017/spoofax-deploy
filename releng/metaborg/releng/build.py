@@ -98,6 +98,8 @@ class RelengBuilder(object):
 
     if self.deployKind:
       deployer = MetaborgDeploy(basedir, self.deployKind, self.bintrayUsername, self.bintrayKey, self.bintrayVersion)
+    else:
+      deployer = None
 
     figlet = Figlet(width=200)
 
@@ -157,7 +159,6 @@ class RelengBuilder(object):
       *targets,
       basedir=basedir,
       deploy=self.deployKind is not None,
-      deployKind=self.deployKind,
       deployer=deployer,
       skipTests=self.skipTests,
       qualifier=qualifier,
@@ -195,7 +196,7 @@ class RelengBuilder(object):
     maven.run_in_dir(cwd, target)
 
   @staticmethod
-  def __build_premade_jars(basedir, deployKind, deployer, maven, **_):
+  def __build_premade_jars(basedir, deployer, maven, **_):
     cwd = os.path.join(basedir, 'releng', 'parent')
 
     # Install make-permissive
@@ -210,7 +211,7 @@ class RelengBuilder(object):
       'file'   : makePermissiveJar,
     }
     maven.run_in_dir(cwd, 'install:install-file', **properties)
-    if deployKind:
+    if deployer:
       properties.update(deployer.maven_local_file_deploy_properties())
       maven.run_in_dir(cwd, 'deploy:deploy-file', **properties)
 
@@ -337,10 +338,9 @@ class RelengBuilder(object):
     maven.run_in_dir(cwd, target, forceContextQualifier=qualifier)
 
   @staticmethod
-  def __build_eclipse(basedir, qualifier, deploy, maven, **_):
-    target = 'deploy' if deploy else 'install'
+  def __build_eclipse(basedir, qualifier, maven, **_):
     cwd = os.path.join(basedir, 'releng', 'build', 'eclipse')
-    maven.run_in_dir(cwd, target, forceContextQualifier=qualifier)
+    maven.run_in_dir(cwd, 'install', forceContextQualifier=qualifier)
     return StepResult([
       Artifact('Spoofax Eclipse update site',
         _glob_one(os.path.join(basedir, 'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/org.metaborg.spoofax.eclipse.updatesite-*.zip')),
