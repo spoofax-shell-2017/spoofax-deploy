@@ -198,7 +198,7 @@ class RelengBuilder(object):
   def __build_premade_jars(basedir, deployKind, deployer, maven, **_):
     cwd = os.path.join(basedir, 'releng', 'parent')
 
-    # Install and deploy make-permissive
+    # Install make-permissive
     makePermissivePath = os.path.join(basedir, 'jsglr', 'make-permissive', 'jar')
     makePermissivePom = os.path.join(makePermissivePath, 'pom.xml')
     makePermissiveJar = os.path.join(makePermissivePath, 'make-permissive.jar')
@@ -342,9 +342,9 @@ class RelengBuilder(object):
     cwd = os.path.join(basedir, 'releng', 'build', 'eclipse')
     maven.run_in_dir(cwd, target, forceContextQualifier=qualifier)
     return StepResult([
-      MetaborgArtifact('Spoofax Eclipse update site', 'spoofax-eclipse-updatesite',
-        os.path.join(basedir, 'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/site_assembly.zip'),
-        os.path.join('spoofax', 'eclipse', 'updatesite.zip')),
+      Artifact('Spoofax Eclipse update site',
+        _glob_one(os.path.join(basedir, 'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/org.metaborg.spoofax.eclipse.updatesite-*.zip')),
+        'spoofax-eclipse.zip'),
     ])
 
   @staticmethod
