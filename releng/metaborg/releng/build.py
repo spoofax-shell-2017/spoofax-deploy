@@ -9,7 +9,7 @@ from mavenpy.run import Maven
 from pyfiglet import Figlet
 
 from eclipsegen.generate import Os, Arch
-from metaborg.releng.deploy import DeployKind, MetaborgDeploy, MetaborgArtifact
+from metaborg.releng.deploy import MetaborgArtifact
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
 from metaborg.util.git import create_qualifier
 
@@ -20,9 +20,6 @@ class RelengBuilder(object):
 
     self.clean = True
 
-    self.copyArtifactsTo = None
-    self.deployKind = DeployKind.none.value
-
     self.skipTests = False
 
     self.offline = False
@@ -31,6 +28,8 @@ class RelengBuilder(object):
     self.quiet = False
 
     self.qualifier = None
+
+    self.copyArtifactsTo = None
 
     self.generateJavaDoc = False
 
@@ -44,12 +43,12 @@ class RelengBuilder(object):
     self.mavenLocalRepo = None
     self.mavenOpts = None
 
+    self.mavenDeployer = None
+
     self.gradleNoNative = False
     self.gradleDaemon = None
 
-    self.bintrayUsername = None
-    self.bintrayKey = None
-    self.bintrayVersion = None
+    self.bintrayDeployer = None
 
     builder = Builder(copyOptions=True, dependencyAnalysis=buildDeps)
     self.__builder = builder
