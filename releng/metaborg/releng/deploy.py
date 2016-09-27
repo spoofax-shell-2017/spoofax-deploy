@@ -1,37 +1,9 @@
 import os
 import shutil
-from enum import unique, Enum
 
 from bintraypy.bintray import Bintray
 from buildorchestra.result import Artifact
 from mavenpy.run import Maven
-
-
-class DeployRepositories(object):
-  def __init__(self, mavenIdentifier, mavenUrl, mavenIsSnapshot, bintrayRepoName):
-    self.mavenIdentifier = mavenIdentifier
-    self.mavenUrl = mavenUrl
-    self.mavenIsSnapshot = mavenIsSnapshot
-    self.bintrayRepoName = bintrayRepoName
-
-
-@unique
-class DeployKind(Enum):
-  none = None
-  snapshot = DeployRepositories('metaborg-nexus',
-    'http://artifacts.metaborg.org/content/repositories/snapshots/', True, None)
-  release = DeployRepositories('metaborg-bintray',
-    'https://api.bintray.com/maven/metaborg/maven/release/;publish=1', False, 'release')
-  milestone = DeployRepositories('metaborg-bintray',
-    'https://api.bintray.com/maven/metaborg/maven/milestone/;publish=1', False, 'milestone')
-
-  @staticmethod
-  def keys():
-    return DeployKind.__members__.keys()
-
-  @staticmethod
-  def exists(kind):
-    return kind in DeployKind.__members__.keys()
 
 
 class MetaborgArtifact(Artifact):
@@ -40,12 +12,11 @@ class MetaborgArtifact(Artifact):
     self.package = package
 
 
-class MetaborgDeploy(object):
-  def __init__(self, rootPath, deployKind, bintrayUsername, bintrayKey, bintrayVersion):
+class MetaborgMavenDeployer(object):
+  def __init__(self, rootPath, identifier, url):
     self.rootPath = rootPath
-    self.deployKind = deployKind
-    self.bintray = Bintray(bintrayUsername, bintrayKey)
-    self.bintrayVersion = bintrayVersion
+    self.identifier = identifier
+    self.url = url
 
   def maven_local_deploy_path(self):
     return os.path.join(self.rootPath, '.local-deploy-repository')
@@ -73,17 +44,24 @@ class MetaborgDeploy(object):
     maven.properties = {
       'wagon.sourceId': '"local"',
       'wagon.source'  : '"file:{}"'.format(path),
-      'wagon.targetId': '"{}"'.format(self.deployKind.mavenIdentifier),
-      'wagon.target'  : '"{}"'.format(self.deployKind.mavenUrl),
+      'wagon.targetId': '"{}"'.format(self.identifier),
+      'wagon.target'  : '"{}"'.format(self.url),
     }
     maven.targets = ['org.codehaus.mojo:wagon-maven-plugin:1.0:merge-maven-repos']
-    maven.run(self.rootPath, None)
+
+
+class MetaborgBintrayDeployer(object):
+  def __init__(self, organization, repository, version, username, key,):
+    self.organization = organization
+    self.repository = repository
+    self.version = version
+    self.bintray = Bintray(username, key)
 
   def artifact_remote_deploy(self, artifact):
-    bintrayRepoName = self.deployKind.bintrayRepoName
-    if not (self.bintrayVersion and bintrayRepoName and artifact.package):
-      print("Skipping deployment of artifact '{}' to Bintray, it has no package name, no version was set, "
-            "or no bintray repository was set".format(artifact.name))
+    if not (self.organization and self.repository and artifact.package and self.version):
+      print("Skipping deployment of artifact '{}' to Bintray: no organization, repository, package name, "
+            "or version was set".format(artifact.name))
       return
-    self.bintray.upload_generic('metaborg', bintrayRepoName, artifact.package, self.bintrayVersion, artifact.location,
+
+    self.bintray.upload_generic(self.organization, self.repository, artifact.package, self.version, artifact.location,
       artifact.target, publish=True)

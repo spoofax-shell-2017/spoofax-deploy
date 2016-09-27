@@ -7,7 +7,6 @@ from plumbum import cli
 from eclipsegen.generate import Os, Arch
 from metaborg.releng.bootstrap import Bootstrap
 from metaborg.releng.build import RelengBuilder
-from metaborg.releng.deploy import DeployKind
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
 from metaborg.releng.icon import GenerateIcons
 from metaborg.releng.maven import MetaborgMavenSettingsGeneratorGenerator
@@ -296,22 +295,6 @@ class MetaborgRelengBuild(cli.Application):
   Builds one or more components of spoofax-releng
   """
 
-  buildStratego = cli.Flag(
-    names=['-s', '--build-stratego'], default=False,
-    help='Build StrategoXT instead of downloading it',
-    group='StrategoXT switches'
-  )
-  bootstrapStratego = cli.Flag(
-    names=['-b', '--bootstrap-stratego'], default=False,
-    help='Bootstrap StrategoXT instead of building it',
-    group='StrategoXT switches'
-  )
-  noStrategoTest = cli.Flag(
-    names=['-t', '--no-stratego-test'], default=False,
-    help='Skip StrategoXT tests',
-    group='StrategoXT switches'
-  )
-
   qualifier = cli.SwitchAttr(
     names=['-q', '--qualifier'], argtype=str, default=None,
     excludes=['--now-qualifier'],
@@ -336,11 +319,6 @@ class MetaborgRelengBuild(cli.Application):
     help='Do not build dependencies, just build given components',
     group='Build switches'
   )
-  deployKindStr = cli.SwitchAttr(
-    names=['-d', '--deploy'], argtype=str, default=None,
-    help='Deploy artifacts to an artifact server. Choose from: {}'.format(', '.join(DeployKind.keys())),
-    group='Build switches'
-  )
   copyArtifacts = cli.SwitchAttr(
     names=['-a', '--copy-artifacts'], argtype=str, default=None,
     help='Copy produced artifacts to given location',
@@ -352,90 +330,128 @@ class MetaborgRelengBuild(cli.Application):
     group='Build switches'
   )
 
-  stack = cli.SwitchAttr(
+  jvmStack = cli.SwitchAttr(
     names=['--stack'], default="16M",
     help="JVM stack size",
     group='JVM switches'
   )
-  minHeap = cli.SwitchAttr(
+  jvmMinHeap = cli.SwitchAttr(
     names=['--min-heap'], default="2G",
     help="JVM minimum heap size",
     group='JVM switches'
   )
-  maxHeap = cli.SwitchAttr(
+  jvmMaxHeap = cli.SwitchAttr(
     names=['--max-heap'], default="2G",
     help="JVM maximum heap size",
     group='JVM switches'
   )
 
-  noClean = cli.Flag(
+  strategoBuild = cli.Flag(
+    names=['-s', '--build-stratego'], default=False,
+    help='Build StrategoXT instead of downloading it',
+    group='StrategoXT switches'
+  )
+  strategoBootstrap = cli.Flag(
+    names=['-b', '--bootstrap-stratego'], default=False,
+    help='Bootstrap StrategoXT instead of building it',
+    group='StrategoXT switches'
+  )
+  strategoNoTests = cli.Flag(
+    names=['-t', '--no-stratego-test'], default=False,
+    help='Skip StrategoXT tests',
+    group='StrategoXT switches'
+  )
+
+  mavenNoClean = cli.Flag(
     names=['-u', '--no-clean'], default=False,
     help='Do not run the clean phase in Maven builds',
     group='Maven switches'
   )
-  skipTests = cli.Flag(
+  mavenSkipTests = cli.Flag(
     names=['-y', '--skip-tests'], default=False,
     help="Skip tests",
     group='Maven switches'
   )
-  settings = cli.SwitchAttr(
+  mavenSettings = cli.SwitchAttr(
     names=['-i', '--settings'], argtype=str, default=None,
     help='Maven settings file location',
     group='Maven switches'
   )
-  globalSettings = cli.SwitchAttr(
+  mavenGlobalSettings = cli.SwitchAttr(
     names=['-g', '--global-settings'], argtype=str, default=None,
     help='Global Maven settings file location',
     group='Maven switches')
-  localRepo = cli.SwitchAttr(
+  mavenLocalRepo = cli.SwitchAttr(
     names=['-l', '--local-repository'], argtype=str, default=None,
     help='Local Maven repository location',
     group='Maven switches'
   )
-  offline = cli.Flag(
+  mavenOffline = cli.Flag(
     names=['-O', '--offline'], default=False,
     help="Pass --offline flag to Maven",
     group='Maven switches'
   )
-  debug = cli.Flag(
-    names=['-D', '--debug'], default=False,
+  mavenDebug = cli.Flag(
+    names=['-X', '--debug'], default=False,
     excludes=['--quiet'],
     help="Pass --debug and --errors flag to Maven",
     group='Maven switches'
   )
-  quiet = cli.Flag(
+  mavenQuiet = cli.Flag(
     names=['-Q', '--quiet'], default=False,
     excludes=['--debug'],
     help="Pass --quiet flag to Maven",
     group='Maven switches'
   )
 
-  noNative = cli.Flag(
+  # maven deploy
+
+  gradleNoNative = cli.Flag(
     names=['-N', '--no-native'], default=False,
     help="Gradle won't use native services",
     group='Gradle switches'
   )
-  noDaemon = cli.Flag(
+  gradleNDaemon = cli.Flag(
     names=['--no-daemon'], default=False,
     help="Gradle won't use its build daemon",
     group='Gradle switches'
   )
 
+  bintrayDeploy = cli.Flag(
+    names=['-D', '--bintray-deploy'], argtype=str, default=None,
+    help='Enable deploying to bintray',
+    group='Bintray switches'
+  )
+  bintrayOrganization = cli.SwitchAttr(
+    names=['--bintray-organization'], argtype=str, default=None,
+    requires=['--bintray-deploy'],
+    help='Organization to use for deploying to Bintray. When not set, deploying to bintray is disabled',
+    group='Bintray switches'
+  )
+  bintrayRepository = cli.SwitchAttr(
+    names=['--bintray-repository'], argtype=str, default=None,
+    requires=['--bintray-deploy'],
+    help='Repository to use for deploying to Bintray. When not set, deploying to bintray is disabled',
+    group='Bintray switches'
+  )
+  bintrayVersion = cli.SwitchAttr(
+    names=['--bintray-version'], argtype=str, default=None,
+    requires=['--bintray-deploy'],
+    help='Version to use for deploying to Bintray. When not set, deploying to bintray is disabled',
+    group='Bintray switches'
+  )
   bintrayUsername = cli.SwitchAttr(
     names=['--bintray-username'], argtype=str, default=None,
+    requires=['--bintray-deploy'],
     help='Bintray username to use for deploying. When not set, defaults to the BINTRAY_USERNAME environment variable. '
          'When the environment variable is also not set, deploying to bintray is disabled',
     group='Bintray switches'
   )
   bintrayKey = cli.SwitchAttr(
     names=['--bintray-key'], argtype=str, default=None,
+    requires=['--bintray-deploy'],
     help='Bintray key to use for deploying. When not set, defaults to the BINTRAY_KEY environment variable. '
          'When the environment variable is also not set, deploying to bintray is disabled',
-    group='Bintray switches'
-  )
-  bintrayVersion = cli.SwitchAttr(
-    names=['--bintray-version'], argtype=str, default=None,
-    help='Version to use for deploying to Bintray. When not set, deploying to bintray is disabled',
     group='Bintray switches'
   )
 
@@ -450,19 +466,19 @@ class MetaborgRelengBuild(cli.Application):
 
     builder.copyArtifactsTo = self.copyArtifacts
 
-    builder.clean = not self.noClean
+    builder.clean = not self.mavenNoClean
     if self.deployKindStr:
       if not DeployKind.exists(self.deployKindStr):
         print('ERROR: deploy kind {} does not exist'.format(self.deployKindStr))
         return 1
       builder.deployKind = DeployKind[self.deployKindStr].value
 
-    builder.skipTests = self.skipTests
+    builder.skipTests = self.mavenSkipTests
 
-    builder.offline = self.offline
+    builder.offline = self.mavenOffline
 
-    builder.debug = self.debug
-    builder.quiet = self.quiet
+    builder.debug = self.mavenDebug
+    builder.quiet = self.mavenQuiet
 
     if self.qualifier:
       qualifier = self.qualifier
@@ -474,18 +490,18 @@ class MetaborgRelengBuild(cli.Application):
 
     builder.generateJavaDoc = self.generateJavaDoc
 
-    builder.buildStratego = self.buildStratego
-    builder.bootstrapStratego = self.bootstrapStratego
-    builder.testStratego = not self.noStrategoTest
+    builder.buildStratego = self.strategoBuild
+    builder.bootstrapStratego = self.strategoBootstrap
+    builder.testStratego = not self.strategoNoTests
 
-    builder.mavenSettingsFile = self.settings
-    builder.mavenGlobalSettingsFile = self.globalSettings
+    builder.mavenSettingsFile = self.mavenSettings
+    builder.mavenGlobalSettingsFile = self.mavenGlobalSettings
     builder.mavenCleanLocalRepo = self.cleanRepo
-    builder.mavenLocalRepo = self.localRepo
-    builder.mavenOpts = '-Xss{} -Xms{} -Xmx{}'.format(self.stack, self.minHeap, self.maxHeap)
+    builder.mavenLocalRepo = self.mavenLocalRepo
+    builder.mavenOpts = '-Xss{} -Xms{} -Xmx{}'.format(self.jvmStack, self.jvmMinHeap, self.jvmMaxHeap)
 
-    builder.gradleNoNative = self.noNative
-    builder.gradleDaemon = False if self.noDaemon else None
+    builder.gradleNoNative = self.gradleNoNative
+    builder.gradleDaemon = False if self.gradleNDaemon else None
 
     builder.bintrayUsername = self.bintrayUsername or os.environ.get('BINTRAY_USERNAME')
     builder.bintrayKey = self.bintrayKey or os.environ.get('BINTRAY_KEY')
