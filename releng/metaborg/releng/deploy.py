@@ -68,7 +68,7 @@ class MetaborgDeploy(object):
     shutil.rmtree(path, ignore_errors=True)
 
   def maven_remote_deploy(self):
-    path = MetaborgDeploy.maven_local_deploy_path(self.rootPath)
+    path = self.maven_local_deploy_path()
     maven = Maven()
     maven.properties = {
       'wagon.sourceId': '"local"',
@@ -85,5 +85,5 @@ class MetaborgDeploy(object):
       print("Skipping deployment of artifact '{}' to Bintray, it has no package name, no version was set, "
             "or no bintray repository was set".format(artifact.name))
       return
-    self.bintray.upload_generic('metaborg', bintrayRepoName, artifact.package, self.bintrayVersion, artifact.target,
-      publish=True)
+    self.bintray.upload_generic('metaborg', bintrayRepoName, artifact.package, self.bintrayVersion, artifact.location,
+      artifact.target, publish=True)

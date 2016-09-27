@@ -74,6 +74,16 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, setEclipseVersions=True,
     return 'Bnd-LastModified' in text
 
   '''
+  Special handling for org.metaborg.spoofax.eclipse.updatesite project. Need to set the version in the pom file to the
+  Eclipse version instead of the Maven version, otherwise Tycho will fail the build.
+  '''
+  if setEclipseVersions:
+    print('Setting version in org.metaborg.spoofax.eclipse.updatesite POM file; {} -> {}'.format(oldEclipseVersion,
+      newEclipseVersion))
+    ReplaceInFile(os.path.join(baseDir, 'spoofax-eclipse', 'org.metaborg.spoofax.eclipse.updatesite', 'pom.xml'),
+      oldEclipseVersion, newEclipseVersion)
+
+  '''
   Special handling of org.metaborg.core.MetaborgConstants Java class. Need to set the METABORG_VERSION constant to the
   Maven version.
   '''
