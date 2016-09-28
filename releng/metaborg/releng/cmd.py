@@ -7,6 +7,7 @@ from plumbum import cli
 from eclipsegen.generate import Os, Arch
 from metaborg.releng.bootstrap import Bootstrap
 from metaborg.releng.build import RelengBuilder
+from metaborg.releng.deploy import MetaborgBintrayDeployer, MetaborgMavenDeployer
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
 from metaborg.releng.icon import GenerateIcons
 from metaborg.releng.maven import MetaborgMavenSettingsGeneratorGenerator
@@ -289,223 +290,268 @@ class MetaborgRelengSetVersions(cli.Application):
     return 0
 
 
-@MetaborgReleng.subcommand("build")
-class MetaborgRelengBuild(cli.Application):
-  """
-  Builds one or more components of spoofax-releng
-  """
+class MetaborgBuildShared(cli.Application):
+  offline = cli.Flag(
+    names=['-O', '--offline'], default=False,
+    help='Pass offline flag to builds',
+    group='Build'
+  )
+  debug = cli.Flag(
+    names=['-X', '--debug'], default=False,
+    excludes=['--quiet'],
+    help='Pass debug flag to builds',
+    group='Build'
+  )
+  quiet = cli.Flag(
+    names=['-Q', '--quiet'], default=False,
+    excludes=['--debug'],
+    help='Pass quiet flag to builds',
+    group='Build'
+  )
 
-  qualifier = cli.SwitchAttr(
-    names=['-q', '--qualifier'], argtype=str, default=None,
-    excludes=['--now-qualifier'],
-    help='Qualifier to use',
-    group='Build switches'
+  strategoBootstrap = cli.Flag(
+    names=['-b', '--stratego-bootstrap'], default=False,
+    help='Bootstrap StrategoXT instead of building it',
+    group='StrategoXT'
   )
-  nowQualifier = cli.Flag(
-    names=['-n', '--now-qualifier'], default=None,
-    excludes=['--qualifier'],
-    help='Use current time as qualifier instead of latest commit date',
-    group='Build switches'
-  )
-
-  cleanRepo = cli.Flag(
-    names=['-c', '--clean-repo'], default=False,
-    help='Clean MetaBorg artifacts from the local repository before building',
-    group='Build switches'
-  )
-  noDeps = cli.Flag(
-    names=['-e', '--no-deps'], default=False,
-    excludes=['--clean-repo'],
-    help='Do not build dependencies, just build given components',
-    group='Build switches'
-  )
-  copyArtifacts = cli.SwitchAttr(
-    names=['-a', '--copy-artifacts'], argtype=str, default=None,
-    help='Copy produced artifacts to given location',
-    group='Build switches'
-  )
-  generateJavaDoc = cli.Flag(
-    names=['-j', '--generate-javadoc'], default=False,
-    help="Generate and attach JavaDoc for Java projects",
-    group='Build switches'
+  strategoNoTests = cli.Flag(
+    names=['-t', '--stratego-no-tests'], default=False,
+    help='Skip StrategoXT tests',
+    group='StrategoXT'
   )
 
   jvmStack = cli.SwitchAttr(
-    names=['--stack'], default="16M",
+    names=['--jvm-stack'], default="16M",
     help="JVM stack size",
-    group='JVM switches'
+    group='JVM'
   )
   jvmMinHeap = cli.SwitchAttr(
-    names=['--min-heap'], default="2G",
+    names=['--jvm-min-heap'], default="2G",
     help="JVM minimum heap size",
-    group='JVM switches'
+    group='JVM'
   )
   jvmMaxHeap = cli.SwitchAttr(
-    names=['--max-heap'], default="2G",
+    names=['--jvm-max-heap'], default="2G",
     help="JVM maximum heap size",
-    group='JVM switches'
+    group='JVM'
   )
 
-  strategoBuild = cli.Flag(
-    names=['-s', '--build-stratego'], default=False,
-    help='Build StrategoXT instead of downloading it',
-    group='StrategoXT switches'
-  )
-  strategoBootstrap = cli.Flag(
-    names=['-b', '--bootstrap-stratego'], default=False,
-    help='Bootstrap StrategoXT instead of building it',
-    group='StrategoXT switches'
-  )
-  strategoNoTests = cli.Flag(
-    names=['-t', '--no-stratego-test'], default=False,
-    help='Skip StrategoXT tests',
-    group='StrategoXT switches'
-  )
-
-  mavenNoClean = cli.Flag(
-    names=['-u', '--no-clean'], default=False,
-    help='Do not run the clean phase in Maven builds',
-    group='Maven switches'
-  )
-  mavenSkipTests = cli.Flag(
-    names=['-y', '--skip-tests'], default=False,
-    help="Skip tests",
-    group='Maven switches'
-  )
   mavenSettings = cli.SwitchAttr(
-    names=['-i', '--settings'], argtype=str, default=None,
+    names=['-i', '--maven-settings'], argtype=str, default=None,
     help='Maven settings file location',
-    group='Maven switches'
+    group='Maven'
   )
   mavenGlobalSettings = cli.SwitchAttr(
-    names=['-g', '--global-settings'], argtype=str, default=None,
+    names=['-g', '--maven-global-settings'], argtype=str, default=None,
     help='Global Maven settings file location',
-    group='Maven switches')
+    group='Maven'
+  )
   mavenLocalRepo = cli.SwitchAttr(
-    names=['-l', '--local-repository'], argtype=str, default=None,
+    names=['-l', '--maven-local-repo'], argtype=str, default=None,
     help='Local Maven repository location',
-    group='Maven switches'
+    group='Maven'
   )
-  mavenOffline = cli.Flag(
-    names=['-O', '--offline'], default=False,
-    help="Pass --offline flag to Maven",
-    group='Maven switches'
-  )
-  mavenDebug = cli.Flag(
-    names=['-X', '--debug'], default=False,
-    excludes=['--quiet'],
-    help="Pass --debug and --errors flag to Maven",
-    group='Maven switches'
-  )
-  mavenQuiet = cli.Flag(
-    names=['-Q', '--quiet'], default=False,
-    excludes=['--debug'],
-    help="Pass --quiet flag to Maven",
-    group='Maven switches'
+  mavenCleanRepo = cli.Flag(
+    names=['-C', '--maven-clean-local-repo'], default=False,
+    help='Clean MetaBorg artifacts from the local Maven repository before building',
+    group='Maven'
   )
 
-  # maven deploy
+  mavenDeploy = cli.Flag(
+    names=['-d', '--maven-deploy'], default=False,
+    help='Deploy Maven artifacts',
+    group='Maven'
+  )
+  mavenDeployIdentifier = cli.SwitchAttr(
+    names=['--maven-deploy-identifier'], argtype=str, default=None,
+    requires=['--maven-deploy'],
+    help='Identifier of the deployment server. Used to pass server username and password via settings',
+    group='Maven'
+  )
+  mavenDeployUrl = cli.SwitchAttr(
+    names=['--maven-deploy-url'], argtype=str, default=None,
+    requires=['--maven-deploy'],
+    help='URL of the deployment server',
+    group='Maven'
+  )
+  mavenDeployRelease = cli.Flag(
+    names=['--maven-deploy-release'], default=False,
+    requires=['--maven-deploy'],
+    help='Whether the artifacts to deploy are release artifacts',
+    group='Maven'
+  )
 
   gradleNoNative = cli.Flag(
-    names=['-N', '--no-native'], default=False,
-    help="Gradle won't use native services",
-    group='Gradle switches'
+    names=['-N', '--gradle-no-native'], default=False,
+    help="Disables Gradle's native services",
+    group='Gradle'
   )
-  gradleNDaemon = cli.Flag(
-    names=['--no-daemon'], default=False,
-    help="Gradle won't use its build daemon",
-    group='Gradle switches'
+  gradleNoDaemon = cli.Flag(
+    names=['--gradle-no-daemon'], default=False,
+    help="Disables Gradle's build daemon",
+    group='Gradle'
   )
 
   bintrayDeploy = cli.Flag(
-    names=['-D', '--bintray-deploy'], argtype=str, default=None,
+    names=['-D', '--bintray-deploy'], default=False,
     help='Enable deploying to bintray',
-    group='Bintray switches'
+    group='Bintray'
   )
   bintrayOrganization = cli.SwitchAttr(
-    names=['--bintray-organization'], argtype=str, default=None,
+    names=['--bintray-org'], argtype=str, default='metaborg',
     requires=['--bintray-deploy'],
-    help='Organization to use for deploying to Bintray. When not set, deploying to bintray is disabled',
-    group='Bintray switches'
+    help='Organization to use for deploying to Bintray',
+    group='Bintray'
   )
   bintrayRepository = cli.SwitchAttr(
-    names=['--bintray-repository'], argtype=str, default=None,
+    names=['--bintray-repo'], argtype=str, default=None,
     requires=['--bintray-deploy'],
-    help='Repository to use for deploying to Bintray. When not set, deploying to bintray is disabled',
-    group='Bintray switches'
+    help='Repository to use for deploying to Bintray',
+    group='Bintray'
   )
   bintrayVersion = cli.SwitchAttr(
     names=['--bintray-version'], argtype=str, default=None,
     requires=['--bintray-deploy'],
-    help='Version to use for deploying to Bintray. When not set, deploying to bintray is disabled',
-    group='Bintray switches'
+    help='Version to use for deploying to Bintray',
+    group='Bintray'
   )
   bintrayUsername = cli.SwitchAttr(
     names=['--bintray-username'], argtype=str, default=None,
     requires=['--bintray-deploy'],
-    help='Bintray username to use for deploying. When not set, defaults to the BINTRAY_USERNAME environment variable. '
-         'When the environment variable is also not set, deploying to bintray is disabled',
-    group='Bintray switches'
+    help='Bintray username to use for deploying. When not set, defaults to the BINTRAY_USERNAME environment variable',
+    group='Bintray'
   )
   bintrayKey = cli.SwitchAttr(
     names=['--bintray-key'], argtype=str, default=None,
     requires=['--bintray-deploy'],
-    help='Bintray key to use for deploying. When not set, defaults to the BINTRAY_KEY environment variable. '
-         'When the environment variable is also not set, deploying to bintray is disabled',
-    group='Bintray switches'
+    help='Bintray key to use for deploying. When not set, defaults to the BINTRAY_KEY environment variable',
+    group='Bintray'
+  )
+
+  def make_builder(self, repo, buildDeps=True, bintrayVersionOverride=None):
+    builder = RelengBuilder(repo, buildDeps=buildDeps)
+
+    builder.offline = self.offline
+    builder.debug = self.debug
+    builder.quiet = self.quiet
+
+    builder.bootstrapStratego = self.strategoBootstrap
+    builder.testStratego = not self.strategoNoTests
+
+    builder.mavenSettingsFile = self.mavenSettings
+    builder.mavenGlobalSettingsFile = self.mavenGlobalSettings
+    builder.mavenLocalRepo = self.mavenLocalRepo
+    builder.mavenCleanLocalRepo = self.mavenCleanRepo
+    builder.mavenOpts = '-Xss{} -Xms{} -Xmx{}'.format(self.jvmStack, self.jvmMinHeap, self.jvmMaxHeap)
+
+    if self.mavenDeploy:
+      if not self.mavenDeployUrl:
+        raise Exception('Maven deploy server URL was not set')
+      if not self.mavenDeployIdentifier:
+        raise Exception('Maven deploy server identifier was not set')
+      builder.mavenDeployer = MetaborgMavenDeployer(repo.working_tree_dir, self.mavenDeployIdentifier,
+        self.mavenDeployUrl, snapshot=not self.mavenDeployRelease)
+    else:
+      builder.mavenDeployer = None
+
+    builder.gradleNoNative = self.gradleNoNative
+    builder.gradleDaemon = False if self.gradleNoDaemon else None
+
+    if self.bintrayDeploy:
+      if not self.bintrayRepository:
+        raise Exception('Bintray repository was not set')
+      bintrayVersion = self.bintrayVersion or bintrayVersionOverride
+      if not bintrayVersion:
+        raise Exception('Bintray version was not set')
+      bintrayUsername = self.bintrayUsername or os.environ.get('BINTRAY_USERNAME')
+      if not bintrayUsername:
+        raise Exception('Bintray username was not set')
+      bintrayKey = self.bintrayKey or os.environ.get('BINTRAY_KEY')
+      if not bintrayKey:
+        raise Exception('Bintray key was not set')
+      builder.bintrayDeployer = MetaborgBintrayDeployer(self.bintrayOrganization, self.bintrayRepository,
+        bintrayVersion, bintrayUsername, bintrayKey)
+    else:
+      builder.bintrayDeployer = None
+
+    return builder
+
+
+@MetaborgReleng.subcommand("build")
+class MetaborgRelengBuild(MetaborgBuildShared):
+  """
+  Builds one or more components of spoofax-releng
+  """
+
+  noDeps = cli.Flag(
+    names=['-e', '--no-deps'], default=False,
+    excludes=['--maven-clean-local-repo'],
+    help='Do not build dependencies, just build given components',
+    group='Build'
+  )
+  noClean = cli.Flag(
+    names=['-u', '--no-clean'], default=False,
+    help='Skip clean up before building',
+    group='Build'
+  )
+  noTests = cli.Flag(
+    names=['-y', '--no-tests'], default=False,
+    help='Skip tests after building',
+    group='Build'
+  )
+  generateJavaDoc = cli.Flag(
+    names=['-j', '--generate-javadoc'], default=False,
+    help='Generate and attach JavaDoc for Java projects',
+    group='Build'
+  )
+  copyArtifacts = cli.SwitchAttr(
+    names=['-a', '--copy-artifacts'], argtype=str, default=None,
+    help='Copy produced artifacts to given location',
+    group='Build'
+  )
+
+  strategoBuild = cli.Flag(
+    names=['-s', '--stratego-build'], default=False,
+    help='Build StrategoXT instead of downloading it',
+    group='StrategoXT'
+  )
+
+  eclipseQualifier = cli.SwitchAttr(
+    names=['-q', '--eclipse-qualifier'], argtype=str, default=None,
+    excludes=['--eclipse-now-qualifier'],
+    help='Eclipse qualifier to use',
+    group='Eclipse'
+  )
+  eclipseNowQualifier = cli.Flag(
+    names=['-n', '--eclipse-now-qualifier'], default=None,
+    excludes=['--eclipse-qualifier'],
+    help='Use current time as Eclipse qualifier instead of latest commit date',
+    group='Eclipse'
   )
 
   def main(self, *components):
     repo = self.parent.repo
-    builder = RelengBuilder(repo, buildDeps=not self.noDeps)
+    builder = self.make_builder(repo, buildDeps=not self.noDeps)
 
     if len(components) == 0:
       print('No components specified, pass one or more of the following components to build:')
       print(', '.join(builder.targets))
       return 1
 
+    builder.clean = not self.noClean
+    builder.skipTests = self.noTests
+    builder.generateJavaDoc = self.generateJavaDoc
     builder.copyArtifactsTo = self.copyArtifacts
 
-    builder.clean = not self.mavenNoClean
-    if self.deployKindStr:
-      if not DeployKind.exists(self.deployKindStr):
-        print('ERROR: deploy kind {} does not exist'.format(self.deployKindStr))
-        return 1
-      builder.deployKind = DeployKind[self.deployKindStr].value
+    builder.buildStratego = self.strategoBuild
 
-    builder.skipTests = self.mavenSkipTests
-
-    builder.offline = self.mavenOffline
-
-    builder.debug = self.mavenDebug
-    builder.quiet = self.mavenQuiet
-
-    if self.qualifier:
-      qualifier = self.qualifier
-    elif self.nowQualifier:
+    if self.eclipseQualifier:
+      qualifier = self.eclipseQualifier
+    elif self.eclipseNowQualifier:
       qualifier = create_now_qualifier(repo)
     else:
       qualifier = None
-    builder.qualifier = qualifier
-
-    builder.generateJavaDoc = self.generateJavaDoc
-
-    builder.buildStratego = self.strategoBuild
-    builder.bootstrapStratego = self.strategoBootstrap
-    builder.testStratego = not self.strategoNoTests
-
-    builder.mavenSettingsFile = self.mavenSettings
-    builder.mavenGlobalSettingsFile = self.mavenGlobalSettings
-    builder.mavenCleanLocalRepo = self.cleanRepo
-    builder.mavenLocalRepo = self.mavenLocalRepo
-    builder.mavenOpts = '-Xss{} -Xms{} -Xmx{}'.format(self.jvmStack, self.jvmMinHeap, self.jvmMaxHeap)
-
-    builder.gradleNoNative = self.gradleNoNative
-    builder.gradleDaemon = False if self.gradleNDaemon else None
-
-    builder.bintrayUsername = self.bintrayUsername or os.environ.get('BINTRAY_USERNAME')
-    builder.bintrayKey = self.bintrayKey or os.environ.get('BINTRAY_KEY')
-    builder.bintrayVersion = self.bintrayVersion
+    builder.eclipseQualifier = qualifier
 
     try:
       builder.build(*components)
@@ -516,7 +562,7 @@ class MetaborgRelengBuild(cli.Application):
 
 
 @MetaborgReleng.subcommand("release")
-class MetaborgRelengRelease(cli.Application):
+class MetaborgRelengRelease(MetaborgBuildShared):
   """
   Performs an interactive release to deploy a new release version
   """
@@ -524,36 +570,22 @@ class MetaborgRelengRelease(cli.Application):
   nextDevelopVersion = cli.SwitchAttr(
     names=['-e', '--next-develop-version'], argtype=str, default=None,
     help='Maven version to set on the development branch after releasing. If not set, the development branch is left untouched',
+    group='Release'
   )
-
-  deployKindStr = cli.SwitchAttr(
-    names=['-d', '--deploy-kind'], argtype=str, mandatory=True,
-    help='Kind of release, to determine where to deploy artifacts. Choose from: {}'.format(
-      ', '.join(DeployKind.keys())),
+  nonInteractive = cli.Flag(
+    names=['--non-interactive'], default=False,
+    help='Runs release process in non-interactive mode',
+    group='Release'
   )
-
-  bootstrapStratego = cli.Flag(
-    names=['-b', '--bootstrap-stratego'], default=False,
-    help='Bootstrap StrategoXT instead of building it',
-    group='StrategoXT switches'
+  resetRelease = cli.Flag(
+    names=['--reset-release'], default=False,
+    help='Resets the release process, starting at the beginning',
+    group='Release'
   )
-  noStrategoTest = cli.Flag(
-    names=['-t', '--no-stratego-test'], default=False,
-    help='Skip StrategoXT tests',
-    group='StrategoXT switches'
-  )
-
-  bintrayUsername = cli.SwitchAttr(
-    names=['--bintray-username'], argtype=str, default=None,
-    help='Bintray username to use for deploying. When not set, defaults to the BINTRAY_USERNAME environment variable. '
-         'When the environment variable is also not set, deploying to bintray is disabled',
-    group='Bintray switches'
-  )
-  bintrayKey = cli.SwitchAttr(
-    names=['--bintray-key'], argtype=str, default=None,
-    help='Bintray key to use for deploying. When not set, defaults to the BINTRAY_KEY environment variable. '
-         'When the environment variable is also not set, deploying to bintray is disabled',
-    group='Bintray switches'
+  revertRelease = cli.Flag(
+    names=['--revert-release'], default=False,
+    help='Reverts the release process, undoing any changes to the release and development branches',
+    group='Release'
   )
 
   def main(self, releaseBranch, nextReleaseVersion, developBranch, curDevelopVersion):
@@ -577,30 +609,34 @@ class MetaborgRelengRelease(cli.Application):
         'using the -r/--repo switch.')
       return 1
 
-    if not DeployKind.exists(self.deployKindStr):
-      print('ERROR: deploy kind {} does not exist'.format(self.deployKindStr))
-      return 1
-    deployKind = DeployKind[self.deployKindStr].value
-    if not deployKind.bintrayRepoName:
-      print('ERROR: no Bintray repository was set, cannot deploy. Choose a different deploy kind')
-      return 1
-    if deployKind.mavenIsSnapshot:
-      print('ERROR: cannot release snapshots. Choose a different deploy kind')
-      return 1
+    builder = self.make_builder(repo, bintrayVersionOverride=nextReleaseVersion)
 
-    release = MetaborgRelease(repo, releaseBranch, nextReleaseVersion, developBranch, curDevelopVersion, deployKind)
+    release = MetaborgRelease(repo, releaseBranch, nextReleaseVersion, developBranch, curDevelopVersion, builder)
 
     release.nextDevelopVersion = self.nextDevelopVersion
+    release.interactive = not self.nonInteractive
 
-    release.bootstrapStratego = self.bootstrapStratego
-    release.testStratego = not self.noStrategoTest
+    if self.revertRelease:
+      print(
+        'WARNING: This will DELETE UNTRACKED FILES and DELETE UNPUSHED COMMITS on the release and development branches, do you want to continue?')
+      if not YesNoTrice():
+        return 1
+      release.revert()
+      release.reset()
+      return 0
 
-    release.bintrayUsername = self.bintrayUsername or os.environ.get('BINTRAY_USERNAME')
-    release.bintrayKey = self.bintrayKey or os.environ.get('BINTRAY_KEY')
+    if self.resetRelease:
+      release.reset()
 
-    if not (release.bintrayUsername and release.bintrayKey):
-      print('ERROR: no Bintray username and/or key was set, cannot deploy')
-      return 1
+    if not builder.mavenDeployer:
+      print('No Maven deployment arguments were set')
+      return 0
+    if builder.mavenDeployer.snapshot:
+      print('Cannot release Maven snapshots')
+      return 0
+    if not builder.bintrayDeployer:
+      print('No Bintray deployment arguments were set')
+      return 0
 
     print('Performing release')
     release.release()

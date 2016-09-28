@@ -13,10 +13,11 @@ class MetaborgArtifact(Artifact):
 
 
 class MetaborgMavenDeployer(object):
-  def __init__(self, rootPath, identifier, url):
+  def __init__(self, rootPath, identifier, url, snapshot=True):
     self.rootPath = rootPath
     self.identifier = identifier
     self.url = url
+    self.snapshot = snapshot
 
   def maven_local_deploy_path(self):
     return os.path.join(self.rootPath, '.local-deploy-repository')
@@ -48,20 +49,19 @@ class MetaborgMavenDeployer(object):
       'wagon.target'  : '"{}"'.format(self.url),
     }
     maven.targets = ['org.codehaus.mojo:wagon-maven-plugin:1.0:merge-maven-repos']
+    maven.run(self.rootPath, None)
 
 
 class MetaborgBintrayDeployer(object):
-  def __init__(self, organization, repository, version, username, key,):
+  def __init__(self, organization, repository, version, username, key):
     self.organization = organization
     self.repository = repository
     self.version = version
     self.bintray = Bintray(username, key)
 
   def artifact_remote_deploy(self, artifact):
-    if not (self.organization and self.repository and artifact.package and self.version):
-      print("Skipping deployment of artifact '{}' to Bintray: no organization, repository, package name, "
-            "or version was set".format(artifact.name))
+    if not artifact.package:
+      print("Skipping deployment of artifact '{}' to Bintray: no package name was set".format(artifact.name))
       return
-
     self.bintray.upload_generic(self.organization, self.repository, artifact.package, self.version, artifact.location,
       artifact.target, publish=True)
