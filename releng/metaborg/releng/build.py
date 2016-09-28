@@ -343,7 +343,7 @@ class RelengBuilder(object):
     return StepResult([
       MetaborgArtifact('Spoofax Eclipse update site', 'spoofax-eclipse-updatesite',
         _glob_one(os.path.join(basedir,
-          'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/org.metaborg.spoofax.eclipse.updatesite-*.zip')),
+          'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/site_assembly.zip')),
         os.path.join('spoofax', 'eclipse', 'updatesite.zip')),
     ])
 
