@@ -25,7 +25,9 @@ class MetaborgMavenDeployer(object):
   def maven_local_deploy_properties(self):
     path = self.maven_local_deploy_path()
     return {
-      'altDeploymentRepository': '"local::default::file:{}"'.format(path)
+      'altDeploymentRepository': '"local::default::file:{}"'.format(path),
+      'deployRepositoryId'     : '"local"',
+      'deployFileUrl'          : '"file:{}"'.format(path)
     }
 
   def maven_local_file_deploy_properties(self):
