@@ -155,7 +155,7 @@ class RelengBuilder(object):
       maven=maven,
       mavenDeployer=self.mavenDeployer,
       gradle=gradle,
-      bintrayDeployer=self.bintrayDeployer,
+      bintrayDeployer=self.bintrayDeployer
     )
 
     if not result:
