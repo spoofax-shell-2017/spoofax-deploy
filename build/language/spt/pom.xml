@@ -26,6 +26,7 @@
     <module>${repo.root}/spt/org.metaborg.spt.cmd</module>
     <module>${repo.root}/spt/org.metaborg.meta.lang.spt</module>
     <module>${repo.root}/spt/org.metaborg.meta.lang.spt.interactive</module>
+    <module>${repo.root}/spt/org.metaborg.lang.minisql</module>
   </modules>
 
   <developers>
