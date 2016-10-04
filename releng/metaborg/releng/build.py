@@ -2,13 +2,14 @@ import glob
 import os
 import shutil
 
-from gradlepy.run import Gradle
-
-from mavenpy.run import Maven
-
-from eclipsegen.generate import EclipseConfiguration
 from buildorchestra.build import Builder
 from buildorchestra.result import StepResult, Artifact
+from gradlepy.run import Gradle
+from mavenpy.run import Maven
+from pyfiglet import Figlet
+
+from eclipsegen.generate import Os, Arch
+from metaborg.releng.deploy import MetaborgArtifact
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
 from metaborg.util.git import create_qualifier
 
@@ -17,27 +18,19 @@ class RelengBuilder(object):
   def __init__(self, repo, buildDeps=True):
     self.__repo = repo
 
-    self.copyArtifactsTo = None
-
     self.clean = True
-    self.deploy = False
-    self.release = False
-
     self.skipTests = False
-    self.skipExpensive = False
-
     self.offline = False
-
     self.debug = False
     self.quiet = False
-
-    self.qualifier = None
-
+    self.copyArtifactsTo = None
     self.generateJavaDoc = False
 
     self.buildStratego = False
     self.bootstrapStratego = False
     self.testStratego = True
+
+    self.eclipseQualifier = None
 
     self.mavenSettingsFile = None
     self.mavenGlobalSettingsFile = None
@@ -45,8 +38,12 @@ class RelengBuilder(object):
     self.mavenLocalRepo = None
     self.mavenOpts = None
 
+    self.mavenDeployer = None
+
     self.gradleNoNative = False
     self.gradleDaemon = None
+
+    self.bintrayDeployer = None
 
     builder = Builder(copyOptions=True, dependencyAnalysis=buildDeps)
     self.__builder = builder
@@ -91,11 +88,15 @@ class RelengBuilder(object):
     return self.__builder.all_steps_ordered
 
   def build(self, *targets):
+    basedir = self.__repo.working_tree_dir
+
+    figlet = Figlet(width=200)
+
     buildStratego = self.buildStratego
     if self.bootstrapStratego:
       buildStratego = True
 
-    qualifier = self.qualifier
+    qualifier = self.eclipseQualifier
     if not qualifier:
       qualifier = create_qualifier(self.__repo)
     print('Using Eclipse qualifier {}.'.format(qualifier))
@@ -103,6 +104,7 @@ class RelengBuilder(object):
     maven = Maven()
     maven.errors = True
     maven.batch = True
+    # Disable annoying warnings when using Cygwin on Windows.
     maven.env['CYGWIN'] = 'nodosfilewarning'
     if self.clean:
       maven.targets.append('clean')
@@ -114,8 +116,13 @@ class RelengBuilder(object):
       maven.properties['generate-javadoc'] = True
     maven.settingsFile = self.mavenSettingsFile
     maven.globalSettingsFile = self.mavenGlobalSettingsFile
-    if self.release:
-      maven.profiles.append('release')
+    if self.mavenDeployer:
+      # Always deploy locally first. If build succeeds, copy locally deployed artifacts to remote artifact server.
+      self.mavenDeployer.maven_local_deploy_clean()
+      maven.properties.update(self.mavenDeployer.maven_local_deploy_properties())
+      if not self.mavenDeployer.snapshot:
+        maven.profiles.append('release')
+    # Disable snapshot repositories for build isolation.
     maven.profiles.append('!add-metaborg-snapshot-repos')
     maven.profiles.append('!add-spoofax-eclipse-repos')
     maven.localRepo = self.mavenLocalRepo
@@ -132,60 +139,69 @@ class RelengBuilder(object):
     gradle.daemon = self.gradleDaemon
 
     if self.mavenCleanLocalRepo:
+      print(figlet.renderText('Cleaning local maven repository'))
       # TODO: self.mavenLocalRepo can be None
       _clean_local_repo(self.mavenLocalRepo)
 
+    print(figlet.renderText('Building'))
     result = self.__builder.build(
       *targets,
-      basedir=self.__repo.working_tree_dir,
-      deploy=self.deploy,
-      release=self.release,
+      basedir=basedir,
       skipTests=self.skipTests,
-      skipExpensive=self.skipExpensive,
-      qualifier=qualifier,
+      eclipseQualifier=qualifier,
       buildStratego=buildStratego,
       bootstrapStratego=self.bootstrapStratego,
       testStratego=self.testStratego,
       maven=maven,
-      gradle=gradle
+      mavenDeployer=self.mavenDeployer,
+      gradle=gradle,
+      bintrayDeployer=self.bintrayDeployer
     )
+
+    if not result:
+      return
+
+    if self.mavenDeployer:
+      print(figlet.renderText('Deploying Maven artifacts'))
+      self.mavenDeployer.maven_remote_deploy()
+
+    if self.bintrayDeployer:
+      print(figlet.renderText('Deploying other artifacts'))
+      for artifact in result.artifacts:
+        self.bintrayDeployer.artifact_remote_deploy(artifact)
+
     if self.copyArtifactsTo:
+      print(figlet.renderText('Copying other artifacts'))
       copyTo = _make_abs(self.copyArtifactsTo, self.__repo.working_tree_dir)
       result.copy_to(copyTo)
 
   # Builders
 
   @staticmethod
-  def __build_poms(basedir, deploy, maven, **_):
-    target = 'deploy' if deploy else 'install'
+  def __build_poms(basedir, maven, mavenDeployer, **_):
+    target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'releng', 'build', 'parent')
     maven.run_in_dir(cwd, target)
 
   @staticmethod
-  def __build_premade_jars(basedir, deploy, release, maven, **_):
-    target = 'deploy:deploy-file' if deploy else 'install:install-file'
-
+  def __build_premade_jars(basedir, maven, mavenDeployer, **_):
     cwd = os.path.join(basedir, 'releng', 'parent')
 
-    # Install make-permissive
+    # Install and deploy make-permissive
     makePermissivePath = os.path.join(basedir, 'jsglr', 'make-permissive', 'jar')
     makePermissivePom = os.path.join(makePermissivePath, 'pom.xml')
     makePermissiveJar = os.path.join(makePermissivePath, 'make-permissive.jar')
 
-    repositoryId = "metaborg-nexus"
-    if release:
-      deployUrl = 'http://artifacts.metaborg.org/content/repositories/releases/'
-    else:
-      deployUrl = 'http://artifacts.metaborg.org/content/repositories/snapshots/'
-
     if 'clean' in maven.targets:
       maven.targets.remove('clean')
-    properties = {'pomFile': makePermissivePom,
-      'file'               : makePermissiveJar,
-      'repositoryId'       : repositoryId,
-      'url'                : deployUrl
+    properties = {
+      'pomFile': makePermissivePom,
+      'file'   : makePermissiveJar,
     }
-    maven.run_in_dir(cwd, target, **properties)
+    maven.run_in_dir(cwd, 'install:install-file', **properties)
+    if mavenDeployer:
+      properties.update(mavenDeployer.maven_local_file_deploy_properties())
+      maven.run_in_dir(cwd, 'deploy:deploy-file', **properties)
 
   @staticmethod
   def __build_or_download_strategoxt(buildStratego, **kwargs):
@@ -207,18 +223,15 @@ class RelengBuilder(object):
     maven.run(cwd, 'download-pom.xml', 'dependency:resolve')
 
   @staticmethod
-  def __build_strategoxt(basedir, deploy, bootstrapStratego, testStratego, skipTests, skipExpensive, maven, **_):
-    target = 'deploy' if deploy else 'install'
+  def __build_strategoxt(basedir, bootstrapStratego, testStratego, skipTests, maven, mavenDeployer, **_):
+    target = 'deploy' if mavenDeployer else 'install'
 
     # Build StrategoXT
     if bootstrapStratego:
       buildFile = os.path.join('bootstrap-pom.xml')
     else:
       buildFile = os.path.join('build-pom.xml')
-    if skipExpensive:
-      properties = {'strategoxt-skip-build': True, 'strategoxt-skip-test': True}
-    else:
-      properties = {'strategoxt-skip-test': skipTests or not testStratego}
+    properties = {'strategoxt-skip-test': skipTests or not testStratego}
     strategoXtDir = os.path.join(basedir, 'strategoxt', 'strategoxt')
     maven.run(strategoXtDir, buildFile, target, **properties)
 
@@ -233,62 +246,62 @@ class RelengBuilder(object):
       distribDir = os.path.join(strategoXtDir, 'buildpoms', 'build', 'target')
 
     return StepResult([
-      Artifact('StrategoXT distribution', _glob_one('{}/strategoxt-distrib-*-bin.tar'.format(distribDir)),
-        'strategoxt-distrib.tar'),
-      Artifact('StrategoXT JAR', '{}/dist/share/strategoxt/strategoxt/strategoxt.jar'.format(distribDir),
-        'strategoxt.jar'),
-      Artifact('StrategoXT minified JAR',
-        _glob_one('{}/buildpoms/minjar/target/strategoxt-min-jar-*.jar'.format(strategoXtDir)),
-        'strategoxt-min.jar'),
+      MetaborgArtifact('StrategoXT distribution', 'strategoxt-distrib',
+        _glob_one('{}/strategoxt-distrib-*-bin.tar'.format(distribDir)),
+        os.path.join('strategoxt', 'distrib.tar')),
+      MetaborgArtifact('StrategoXT JAR', 'strategoxt-jar',
+        '{}/dist/share/strategoxt/strategoxt/strategoxt.jar'.format(distribDir),
+        os.path.join('strategoxt', 'strategoxt.jar')),
     ])
 
   @staticmethod
-  def __build_java(basedir, qualifier, deploy, maven, **_):
-    target = 'deploy' if deploy else 'install'
+  def __build_java(basedir, maven, mavenDeployer, **_):
+    target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'releng', 'build', 'java')
-    maven.run_in_dir(cwd, target, forceContextQualifier=qualifier)
+    maven.run_in_dir(cwd, target)
     return StepResult([
-      Artifact('Spoofax sunshine JAR', _glob_one(
-        os.path.join(basedir, 'spoofax-sunshine/org.metaborg.sunshine2/target/org.metaborg.sunshine2-*.jar')),
-        'spoofax-sunshine.jar'),
+      MetaborgArtifact('Spoofax sunshine JAR', 'spoofax-sunshine',
+        _glob_one(os.path.join(basedir, 'spoofax-sunshine/org.metaborg.sunshine2/target/org.metaborg.sunshine2-*.jar')),
+        os.path.join('spoofax', 'sunshine.jar')),
     ])
 
   @staticmethod
-  def __build_java_uber(basedir, deploy, maven, **_):
-    target = 'deploy' if deploy else 'install'
+  def __build_java_uber(basedir, maven, mavenDeployer, **_):
+    target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'spoofax', 'org.metaborg.spoofax.core.uber')
     maven.run_in_dir(cwd, target)
     return StepResult([
-      Artifact('Spoofax uber JAR', _glob_one(os.path.join(cwd, 'target/org.metaborg.spoofax.core.uber-*.jar')),
-        'spoofax-uber.jar'),
+      MetaborgArtifact('Spoofax uber JAR', 'spoofax-core-uber',
+        _glob_one(os.path.join(cwd, 'target/org.metaborg.spoofax.core.uber-*.jar')),
+        os.path.join('spoofax', 'core-uber.jar')),
     ])
 
   @staticmethod
-  def __build_java_libs(basedir, deploy, maven, **_):
-    target = 'deploy' if deploy else 'install'
+  def __build_java_libs(basedir, maven, mavenDeployer, **_):
+    target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'releng', 'build', 'libs')
     maven.run_in_dir(cwd, target)
     return StepResult([
-      Artifact('Spoofax libraries JAR', _glob_one(os.path.join(basedir, 'releng/build/libs/target/build.libs-*.jar')),
-        'spoofax-libs.jar'),
+      Artifact('Spoofax libraries JAR',
+        _glob_one(os.path.join(basedir, 'releng/build/libs/target/build.libs-*.jar')),
+        os.path.join('spoofax', 'libs.jar')),
     ])
 
   @staticmethod
-  def __build_language_prereqs(basedir, deploy, maven, **_):
-    target = 'deploy' if deploy else 'install'
+  def __build_language_prereqs(basedir, maven, mavenDeployer, **_):
+    target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'releng', 'build', 'language', 'parent')
     maven.run_in_dir(cwd, target)
 
   @staticmethod
-  def __build_languages(basedir, deploy, skipExpensive, maven, **_):
-    target = 'deploy' if deploy else 'install'
-    properties = {'spoofax.skip': True} if skipExpensive else {}
+  def __build_languages(basedir, maven, mavenDeployer, **_):
+    target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'releng', 'build', 'language')
-    maven.run_in_dir(cwd, target, **properties)
+    maven.run_in_dir(cwd, target)
 
   @staticmethod
-  def __build_dynsem(basedir, deploy, maven, **_):
-    target = 'deploy' if deploy else 'install'
+  def __build_dynsem(basedir, maven, mavenDeployer, **_):
+    target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'releng', 'build', 'language', 'dynsem')
     # Don't skip expensive steps, always clean, because of incompatibilities/bugs with annotation processor.
     if 'clean' not in maven.targets:
@@ -296,53 +309,48 @@ class RelengBuilder(object):
     maven.run_in_dir(cwd, target)
 
   @staticmethod
-  def __build_spt(basedir, deploy, skipExpensive, maven, **_):
-    target = 'deploy' if deploy else 'install'
-    properties = {'spoofax.skip': True} if skipExpensive else {}
+  def __build_spt(basedir, maven, mavenDeployer, **_):
+    target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'releng', 'build', 'language', 'spt')
-    maven.run_in_dir(cwd, target, **properties)
+    maven.run_in_dir(cwd, target)
     return StepResult([
-      Artifact('SPT testrunner JAR', _glob_one(os.path.join(basedir,
-        'spt/org.metaborg.spt.cmd/target/org.metaborg.spt.cmd-*.jar')), 'spoofax-testrunner.jar'),
+      MetaborgArtifact('SPT testrunner JAR', 'spoofax-testrunner',
+        _glob_one(os.path.join(basedir, 'spt/org.metaborg.spt.cmd/target/org.metaborg.spt.cmd-*.jar')),
+        os.path.join('spoofax', 'testrunner.jar')),
     ])
 
   @staticmethod
-  def __build_eclipse_prereqs(basedir, qualifier, deploy, maven, **_):
-    target = 'deploy' if deploy else 'install'
+  def __build_eclipse_prereqs(basedir, eclipseQualifier, maven, mavenDeployer, **_):
+    target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'releng', 'build', 'eclipse', 'deps')
-    maven.run_in_dir(cwd, target, forceContextQualifier=qualifier)
+    maven.run_in_dir(cwd, target, forceContextQualifier=eclipseQualifier)
 
   @staticmethod
-  def __build_eclipse(basedir, qualifier, deploy, maven, **_):
-    target = 'deploy' if deploy else 'install'
+  def __build_eclipse(basedir, eclipseQualifier, maven, **_):
     cwd = os.path.join(basedir, 'releng', 'build', 'eclipse')
-    maven.run_in_dir(cwd, target, forceContextQualifier=qualifier)
+    maven.run_in_dir(cwd, 'install', forceContextQualifier=eclipseQualifier)
     return StepResult([
-      Artifact('Spoofax Eclipse update site', os.path.join(basedir,
-        'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/site_assembly.zip'),
-        'spoofax-eclipse.zip'),
+      # TODO: switch back to MetaborgArtifact once we can upload larger files to Bintray.
+      # MetaborgArtifact('Spoofax Eclipse update site', 'spoofax-eclipse-updatesite',
+      Artifact('Spoofax Eclipse update site',
+        _glob_one(os.path.join(basedir,
+          'spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite/target/site_assembly.zip')),
+        os.path.join('spoofax', 'eclipse', 'updatesite.zip')),
     ])
 
   @staticmethod
   def __build_eclipse_instances(basedir, **_):
     eclipsegenPath = 'eclipsegen'
 
-    def generate(eclipseOs, eclipseArch):
-      generator = MetaborgEclipseGenerator(basedir, eclipsegenPath,
-        EclipseConfiguration(os=eclipseOs, arch=eclipseArch), spoofax=True, spoofaxRepoLocal=True, archive=True)
-      generator.generate(fixIni=True, addJre=True, archiveJreSeparately=True, archivePrefix='spoofax')
+    generator = MetaborgEclipseGenerator(basedir, eclipsegenPath, spoofax=True, spoofaxRepoLocal=True)
+    archives = generator.generate_all(oss=Os.values(), archs=Arch.values(), fixIni=True, addJre=True,
+      archiveJreSeparately=True, archivePrefix='spoofax')
 
-    generate('win32', 'x86')
-    generate('win32', 'x86_64')
-    generate('linux', 'x86')
-    generate('linux', 'x86_64')
-    generate('macosx', 'x86_64')
-
-    archives = glob.glob(os.path.join(basedir, eclipsegenPath, '*'))
     artifacts = []
     for archive in archives:
-      targetName = os.path.join('eclipse', os.path.basename(archive))
-      artifacts.append(Artifact('Spoofax Eclipse instance', archive, targetName))
+      location = archive.location
+      target = os.path.join('spoofax', 'eclipse', os.path.basename(location))
+      artifacts.append(MetaborgArtifact('Spoofax Eclipse instance', 'spoofax-eclipse-installation', location, target))
     return StepResult(artifacts)
 
   @staticmethod
@@ -363,10 +371,10 @@ class RelengBuilder(object):
     cwd = os.path.join(basedir, 'spoofax-intellij', 'org.metaborg.intellij')
     gradle.run_in_dir(cwd, target)
     return StepResult([
-      Artifact('Spoofax for IntelliJ IDEA plugin',
+      MetaborgArtifact('Spoofax for IntelliJ IDEA plugin', 'spoofax-intellij-updatesite',
         _glob_one(os.path.join(basedir,
           'spoofax-intellij/org.metaborg.intellij/build/distributions/org.metaborg.intellij-*.zip')),
-        'spoofax-intellij.zip'),
+        os.path.join('spoofax', 'intellij', 'plugin.zip')),
     ])
 
 

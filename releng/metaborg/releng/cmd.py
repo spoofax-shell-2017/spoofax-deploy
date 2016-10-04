@@ -1,15 +1,18 @@
+import os
 from os import path
 
+import jprops
 from git.repo.base import Repo
 from plumbum import cli
-from eclipsegen.generate import EclipseConfiguration
 
+from eclipsegen.generate import Os, Arch
 from metaborg.releng.bootstrap import Bootstrap
 from metaborg.releng.build import RelengBuilder
+from metaborg.releng.deploy import MetaborgBintrayDeployer, MetaborgMavenDeployer
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
 from metaborg.releng.icon import GenerateIcons
 from metaborg.releng.maven import MetaborgMavenSettingsGeneratorGenerator
-from metaborg.releng.release import Release
+from metaborg.releng.release import MetaborgRelease
 from metaborg.releng.versions import SetVersions
 from metaborg.util.git import (CheckoutAll, CleanAll, MergeAll, PushAll,
   RemoteType, ResetAll, SetRemoteAll, TagAll,
@@ -18,11 +21,34 @@ from metaborg.util.path import CommonPrefix
 from metaborg.util.prompt import YesNo, YesNoTrice, YesNoTwice
 
 
+class BuildProperties(object):
+  def __init__(self, location=None):
+    if location and os.path.isfile(location):
+      with open(location, 'rb') as file:
+        self.properties = jprops.load_properties(file)
+    else:
+      self.properties = []
+
+  def get(self, key, default=None):
+    if key in self.properties:
+      return self.properties[key]
+    else:
+      return default
+
+  def get_bool(self, key, default):
+    if key in self.properties:
+      value = self.properties[key]
+      return value.casefold() == 'true'.casefold() or value == '1'
+    else:
+      return default
+
+
 class MetaborgReleng(cli.Application):
   PROGNAME = 'b'
 
   repoDirectory = '.'
   repo = None
+  buildProps = None
 
   @cli.switch(names=["--repo", "-r"], argtype=str)
   def repo_directory(self, directory):
@@ -38,8 +64,8 @@ class MetaborgReleng(cli.Application):
       self.help()
       return 1
     cli.ExistingDirectory(self.repoDirectory)
-
     self.repo = Repo(self.repoDirectory)
+    self.buildProps = BuildProperties(os.path.join(self.repo.working_tree_dir, 'build.properties'))
     return 0
 
 
@@ -288,193 +314,271 @@ class MetaborgRelengSetVersions(cli.Application):
     return 0
 
 
-@MetaborgReleng.subcommand("build")
-class MetaborgRelengBuild(cli.Application):
-  """
-  Builds one or more components of spoofax-releng
-  """
-
-  buildStratego = cli.Flag(
-    names=['-s', '--build-stratego'], default=False,
-    help='Build StrategoXT instead of downloading it',
-    group='StrategoXT switches'
-  )
-  bootstrapStratego = cli.Flag(
-    names=['-b', '--bootstrap-stratego'], default=False,
-    help='Bootstrap StrategoXT instead of building it',
-    group='StrategoXT switches'
-  )
-  noStrategoTest = cli.Flag(
-    names=['-t', '--no-stratego-test'], default=False,
-    help='Skip StrategoXT tests',
-    group='StrategoXT switches'
-  )
-
-  qualifier = cli.SwitchAttr(
-    names=['-q', '--qualifier'], argtype=str, default=None,
-    excludes=['--now-qualifier'],
-    help='Qualifier to use',
-    group='Build switches'
-  )
-  nowQualifier = cli.Flag(
-    names=['-n', '--now-qualifier'], default=None,
-    excludes=['--qualifier'],
-    help='Use current time as qualifier instead of latest commit date',
-    group='Build switches'
-  )
-
-  cleanRepo = cli.Flag(
-    names=['-c', '--clean-repo'], default=False,
-    help='Clean MetaBorg artifacts from the local repository before building',
-    group='Build switches'
-  )
-  noDeps = cli.Flag(
-    names=['-e', '--no-deps'], default=False,
-    excludes=['--clean-repo'],
-    help='Do not build dependencies, just build given components',
-    group='Build switches'
-  )
-  deploy = cli.Flag(
-    names=['-d', '--deploy'], default=False,
-    help='Deploy after building',
-    group='Build switches'
-  )
-  release = cli.Flag(
-    names=['-r', '--release'], default=False,
-    help='Perform a release build. Checks whether all dependencies are release versions, fails the build if not',
-    group='Build switches'
-  )
-  skipExpensive = cli.Flag(
-    names=['-k', '--skip-expensive'], default=False,
-    requires=['--no-clean'], excludes=['--clean-repo'],
-    help='Skip expensive build steps such as Spoofax language builds. Typically used after a regular build to deploy more quickly',
-    group='Build switches'
-  )
-  copyArtifacts = cli.SwitchAttr(
-    names=['-a', '--copy-artifacts'], argtype=str, default=None,
-    help='Copy produced artifacts to given location',
-    group='Build switches'
-  )
-  generateJavaDoc = cli.Flag(
-    names=['-j', '--generate-javadoc'], default=False,
-    help="Generate and attach JavaDoc for Java projects",
-    group='Build switches'
-  )
-
-  noClean = cli.Flag(
-    names=['-u', '--no-clean'], default=False,
-    help='Do not run the clean phase in Maven builds',
-    group='Maven switches'
-  )
-  skipTests = cli.Flag(
-    names=['-y', '--skip-tests'], default=False,
-    help="Skip tests",
-    group='Maven switches'
-  )
-  settings = cli.SwitchAttr(
-    names=['-i', '--settings'], argtype=str, default=None,
-    help='Maven settings file location',
-    group='Maven switches'
-  )
-  globalSettings = cli.SwitchAttr(
-    names=['-g', '--global-settings'], argtype=str, default=None,
-    help='Global Maven settings file location',
-    group='Maven switches')
-  localRepo = cli.SwitchAttr(
-    names=['-l', '--local-repository'], argtype=str, default=None,
-    help='Local Maven repository location',
-    group='Maven switches'
+class MetaborgBuildShared(cli.Application):
+  buildVersion = cli.SwitchAttr(
+    names=['--version'], argtype=str, default=None,
+    help='Version to build',
+    group='Build'
   )
   offline = cli.Flag(
     names=['-O', '--offline'], default=False,
-    help="Pass --offline flag to Maven",
-    group='Maven switches'
+    help='Pass offline flag to builds',
+    group='Build'
   )
   debug = cli.Flag(
-    names=['-D', '--debug'], default=False,
+    names=['-X', '--debug'], default=False,
     excludes=['--quiet'],
-    help="Pass --debug and --errors flag to Maven",
-    group='Maven switches'
+    help='Pass debug flag to builds',
+    group='Build'
   )
   quiet = cli.Flag(
     names=['-Q', '--quiet'], default=False,
     excludes=['--debug'],
-    help="Pass --quiet flag to Maven",
-    group='Maven switches'
+    help='Pass quiet flag to builds',
+    group='Build'
   )
 
-  noNative = cli.Flag(
-    names=['-N', '--no-native'], default=False,
-    help="Gradle won't use native services",
-    group='Gradle switches'
+  strategoBootstrap = cli.Flag(
+    names=['-b', '--stratego-bootstrap'], default=False,
+    help='Bootstrap StrategoXT instead of building it',
+    group='StrategoXT'
   )
-  noDaemon = cli.Flag(
-    names=['--no-daemon'], default=False,
-    help="Gradle won't use its build daemon",
-    group='Gradle switches'
+  strategoNoTests = cli.Flag(
+    names=['-t', '--stratego-no-tests'], default=False,
+    help='Skip StrategoXT tests',
+    group='StrategoXT'
   )
 
-  stack = cli.SwitchAttr(
-    names=['--stack'], default="16M",
+  jvmStack = cli.SwitchAttr(
+    names=['--jvm-stack'], default="16M",
     help="JVM stack size",
-    group='JVM switches'
+    group='JVM'
   )
-  minHeap = cli.SwitchAttr(
-    names=['--min-heap'], default="2G",
+  jvmMinHeap = cli.SwitchAttr(
+    names=['--jvm-min-heap'], default="2G",
     help="JVM minimum heap size",
-    group='JVM switches'
+    group='JVM'
   )
-  maxHeap = cli.SwitchAttr(
-    names=['--max-heap'], default="2G",
+  jvmMaxHeap = cli.SwitchAttr(
+    names=['--jvm-max-heap'], default="2G",
     help="JVM maximum heap size",
-    group='JVM switches'
+    group='JVM'
+  )
+
+  mavenSettings = cli.SwitchAttr(
+    names=['-i', '--maven-settings'], argtype=str, default=None,
+    help='Maven settings file location',
+    group='Maven'
+  )
+  mavenGlobalSettings = cli.SwitchAttr(
+    names=['-g', '--maven-global-settings'], argtype=str, default=None,
+    help='Global Maven settings file location',
+    group='Maven'
+  )
+  mavenLocalRepo = cli.SwitchAttr(
+    names=['-l', '--maven-local-repo'], argtype=str, default=None,
+    help='Local Maven repository location',
+    group='Maven'
+  )
+  mavenCleanRepo = cli.Flag(
+    names=['-C', '--maven-clean-local-repo'], default=False,
+    help='Clean MetaBorg artifacts from the local Maven repository before building',
+    group='Maven'
+  )
+
+  mavenDeploy = cli.Flag(
+    names=['-d', '--maven-deploy'], default=False,
+    help='Deploy Maven artifacts',
+    group='Maven'
+  )
+  mavenDeployIdentifier = cli.SwitchAttr(
+    names=['--maven-deploy-identifier'], argtype=str, default=None,
+    requires=['--maven-deploy'],
+    help='Identifier of the deployment server. Used to pass server username and password via settings',
+    group='Maven'
+  )
+  mavenDeployUrl = cli.SwitchAttr(
+    names=['--maven-deploy-url'], argtype=str, default=None,
+    requires=['--maven-deploy'],
+    help='URL of the deployment server',
+    group='Maven'
+  )
+
+  gradleNoNative = cli.Flag(
+    names=['-N', '--gradle-no-native'], default=False,
+    help="Disables Gradle's native services",
+    group='Gradle'
+  )
+  gradleNoDaemon = cli.Flag(
+    names=['--gradle-no-daemon'], default=False,
+    help="Disables Gradle's build daemon",
+    group='Gradle'
+  )
+
+  bintrayDeploy = cli.Flag(
+    names=['-D', '--bintray-deploy'], default=False,
+    help='Enable deploying to bintray',
+    group='Bintray'
+  )
+  bintrayOrganization = cli.SwitchAttr(
+    names=['--bintray-org'], argtype=str, default='metaborg',
+    requires=['--bintray-deploy'],
+    help='Organization to use for deploying to Bintray',
+    group='Bintray'
+  )
+  bintrayRepository = cli.SwitchAttr(
+    names=['--bintray-repo'], argtype=str, default=None,
+    requires=['--bintray-deploy'],
+    help='Repository to use for deploying to Bintray',
+    group='Bintray'
+  )
+  bintrayUsername = cli.SwitchAttr(
+    names=['--bintray-username'], argtype=str, default=None,
+    requires=['--bintray-deploy'],
+    help='Bintray username to use for deploying. When not set, defaults to the BINTRAY_USERNAME environment variable',
+    group='Bintray'
+  )
+  bintrayKey = cli.SwitchAttr(
+    names=['--bintray-key'], argtype=str, default=None,
+    requires=['--bintray-deploy'],
+    help='Bintray key to use for deploying. When not set, defaults to the BINTRAY_KEY environment variable',
+    group='Bintray'
+  )
+
+  def make_builder(self, repo, buildProps, buildDeps=True, versionOverride=None):
+    builder = RelengBuilder(repo, buildDeps=buildDeps)
+
+    version = buildProps.get('version', versionOverride or self.buildVersion)
+    if version:
+      versionIsSnapshot = 'SNAPSHOT' in version
+    else:
+      versionIsSnapshot = True
+
+    builder.offline = self.offline
+    builder.debug = self.debug
+    builder.quiet = self.quiet
+
+    builder.bootstrapStratego = buildProps.get_bool('stratego.bootstrap', self.strategoBootstrap)
+    builder.testStratego = buildProps.get_bool('stratego.test', not self.strategoNoTests)
+
+    builder.mavenSettingsFile = self.mavenSettings
+    builder.mavenGlobalSettingsFile = self.mavenGlobalSettings
+    builder.mavenLocalRepo = self.mavenLocalRepo
+    builder.mavenCleanLocalRepo = self.mavenCleanRepo
+    builder.mavenOpts = '-Xss{} -Xms{} -Xmx{}'.format(self.jvmStack, self.jvmMinHeap, self.jvmMaxHeap)
+
+    if buildProps.get_bool('maven.deploy.enable', self.mavenDeploy):
+      mavenDeployIdentifier = buildProps.get('maven.deploy.id', self.mavenDeployIdentifier)
+      mavenDeployUrl = buildProps.get('maven.deploy.url', self.mavenDeployUrl)
+      if not mavenDeployUrl:
+        raise Exception('Cannot deploy to Maven: Maven deploy server URL was not set')
+      if not mavenDeployIdentifier:
+        raise Exception('Cannot deploy to Maven: Maven deploy server identifier was not set')
+      builder.mavenDeployer = MetaborgMavenDeployer(repo.working_tree_dir, mavenDeployUrl, mavenDeployUrl,
+        snapshot=versionIsSnapshot)
+    else:
+      builder.mavenDeployer = None
+
+    builder.gradleNoNative = self.gradleNoNative
+    builder.gradleDaemon = False if self.gradleNoDaemon else None
+
+    if buildProps.get_bool('bintray.deploy.enable', self.bintrayDeploy):
+      bintrayOrganization = buildProps.get('bintray.deploy.organization', self.bintrayOrganization)
+      bintrayRepository = buildProps.get('bintray.deploy.repository', self.bintrayRepository)
+      if not bintrayRepository:
+        raise Exception('Cannot deploy to Bintray: Bintray repository was not set')
+      if not version:
+        raise Exception('Cannot deploy to Bintray: version was not set')
+      bintrayUsername = self.bintrayUsername or os.environ.get('BINTRAY_USERNAME')
+      if not bintrayUsername:
+        raise Exception('Cannot deploy to Bintray: Bintray username was not set')
+      bintrayKey = self.bintrayKey or os.environ.get('BINTRAY_KEY')
+      if not bintrayKey:
+        raise Exception('Cannot deploy to Bintray: Bintray key was not set')
+      builder.bintrayDeployer = MetaborgBintrayDeployer(bintrayOrganization, bintrayRepository, version,
+        bintrayUsername, bintrayKey)
+    else:
+      builder.bintrayDeployer = None
+
+    return builder
+
+
+@MetaborgReleng.subcommand("build")
+class MetaborgRelengBuild(MetaborgBuildShared):
+  """
+  Builds one or more components of spoofax-releng
+  """
+
+  noDeps = cli.Flag(
+    names=['-e', '--no-deps'], default=False,
+    excludes=['--maven-clean-local-repo'],
+    help='Do not build dependencies, just build given components',
+    group='Build'
+  )
+  noClean = cli.Flag(
+    names=['-u', '--no-clean'], default=False,
+    help='Skip clean up before building',
+    group='Build'
+  )
+  noTests = cli.Flag(
+    names=['-y', '--no-tests'], default=False,
+    help='Skip tests after building',
+    group='Build'
+  )
+  generateJavaDoc = cli.Flag(
+    names=['-j', '--generate-javadoc'], default=False,
+    help='Generate and attach JavaDoc for Java projects',
+    group='Build'
+  )
+  copyArtifacts = cli.SwitchAttr(
+    names=['-a', '--copy-artifacts'], argtype=str, default=None,
+    help='Copy produced artifacts to given location',
+    group='Build'
+  )
+
+  strategoBuild = cli.Flag(
+    names=['-s', '--stratego-build'], default=False,
+    help='Build StrategoXT instead of downloading it',
+    group='StrategoXT'
+  )
+
+  eclipseQualifier = cli.SwitchAttr(
+    names=['-q', '--eclipse-qualifier'], argtype=str, default=None,
+    excludes=['--eclipse-now-qualifier'],
+    help='Eclipse qualifier to use',
+    group='Eclipse'
+  )
+  eclipseNowQualifier = cli.Flag(
+    names=['-n', '--eclipse-now-qualifier'], default=None,
+    excludes=['--eclipse-qualifier'],
+    help='Use current time as Eclipse qualifier instead of latest commit date',
+    group='Eclipse'
   )
 
   def main(self, *components):
     repo = self.parent.repo
-    builder = RelengBuilder(repo, buildDeps=not self.noDeps)
+    buildProps = self.parent.buildProps
+    builder = self.make_builder(repo, buildProps, buildDeps=not self.noDeps)
 
     if len(components) == 0:
       print('No components specified, pass one or more of the following components to build:')
       print(', '.join(builder.targets))
       return 1
 
-    builder.copyArtifactsTo = self.copyArtifacts
-
     builder.clean = not self.noClean
-    builder.deploy = self.deploy
-    builder.release = self.release
+    builder.skipTests = self.noTests
+    builder.generateJavaDoc = self.generateJavaDoc
+    builder.copyArtifactsTo = buildProps.get('build.artifact.copy', self.copyArtifacts)
 
-    builder.skipTests = self.skipTests
-    builder.skipExpensive = self.skipExpensive
+    builder.buildStratego = buildProps.get_bool('stratego.build', self.strategoBuild)
 
-    builder.offline = self.offline
-
-    builder.debug = self.debug
-    builder.quiet = self.quiet
-
-    if self.qualifier:
-      qualifier = self.qualifier
-    elif self.nowQualifier:
+    if self.eclipseQualifier:
+      qualifier = self.eclipseQualifier
+    elif self.eclipseNowQualifier:
       qualifier = create_now_qualifier(repo)
     else:
       qualifier = None
-    builder.qualifier = qualifier
-
-    builder.generateJavaDoc = self.generateJavaDoc
-
-    builder.buildStratego = self.buildStratego
-    builder.bootstrapStratego = self.bootstrapStratego
-    builder.testStratego = not self.noStrategoTest
-
-    builder.mavenSettingsFile = self.settings
-    builder.mavenGlobalSettingsFile = self.globalSettings
-    builder.mavenCleanLocalRepo = self.cleanRepo
-    builder.mavenLocalRepo = self.localRepo
-    builder.mavenOpts = '-Xss{} -Xms{} -Xmx{}'.format(self.stack, self.minHeap, self.maxHeap)
-
-    builder.gradleNoNative = self.noNative
-    builder.gradleDaemon = False if self.noDaemon else None
+    builder.eclipseQualifier = qualifier
 
     try:
       builder.build(*components)
@@ -485,25 +589,43 @@ class MetaborgRelengBuild(cli.Application):
 
 
 @MetaborgReleng.subcommand("release")
-class MetaborgRelengRelease(cli.Application):
+class MetaborgRelengRelease(MetaborgBuildShared):
   """
   Performs an interactive release to deploy a new release version
   """
 
-  releaseBranch = cli.SwitchAttr(names=['--rel-branch'], argtype=str, mandatory=True,
-    help="Release branch")
-  developBranch = cli.SwitchAttr(names=['--dev-branch'], argtype=str, mandatory=True,
-    help="Development branch")
+  nextDevelopVersion = cli.SwitchAttr(
+    names=['-e', '--next-develop-version'], argtype=str, default=None,
+    help='Maven version to set on the development branch after releasing. If not set, the development branch is left untouched',
+    group='Release'
+  )
+  nonInteractive = cli.Flag(
+    names=['--non-interactive'], default=False,
+    help='Runs release process in non-interactive mode',
+    group='Release'
+  )
+  resetRelease = cli.Flag(
+    names=['--reset-release'], default=False,
+    help='Resets the release process, starting at the beginning',
+    group='Release'
+  )
+  revertRelease = cli.Flag(
+    names=['--revert-release'], default=False,
+    help='Reverts the release process, undoing any changes to the release and development branches',
+    group='Release'
+  )
 
-  curDevelopVersion = cli.SwitchAttr(names=['--cur-dev-ver'], argtype=str, mandatory=True,
-    help="Current Maven version in the development branch")
-  nextReleaseVersion = cli.SwitchAttr(names=['--next-rel-ver'], argtype=str, mandatory=True,
-    help="Next Maven version in the release branch")
-  nextDevelopVersion = cli.SwitchAttr(names=['--next-dev-ver'], argtype=str, mandatory=True,
-    help="Next Maven version in the development branch")
+  def main(self, releaseBranch, nextReleaseVersion, developBranch, curDevelopVersion):
+    """
+    Performs an interactive release to deploy a new release version
 
-  def main(self):
-    print('Performing interactive release')
+    :param releaseBranch: Git branch to release to
+    :param nextReleaseVersion: Next Maven version for the release branch
+
+    :param developBranch: Git development branch to release from
+    :param curDevelopVersion: Current Maven version for the development branch
+    :return:
+    """
 
     repo = self.parent.repo
     repoDir = repo.working_tree_dir
@@ -513,9 +635,39 @@ class MetaborgRelengRelease(cli.Application):
         'Cannot perform release on the same repository this script is contained in, please set another repository '
         'using the -r/--repo switch.')
       return 1
+    buildProps = self.parent.buildProps
+    builder = self.make_builder(repo, buildProps, versionOverride=nextReleaseVersion)
 
-    Release(repo, self.releaseBranch, self.developBranch, self.curDevelopVersion, self.nextReleaseVersion,
-      self.nextDevelopVersion)
+    release = MetaborgRelease(repo, releaseBranch, nextReleaseVersion, developBranch, curDevelopVersion, builder)
+
+    release.nextDevelopVersion = self.nextDevelopVersion
+    release.interactive = not self.nonInteractive
+
+    if self.revertRelease:
+      print(
+        'WARNING: This will DELETE UNTRACKED FILES and DELETE UNPUSHED COMMITS on the release and development branches, do you want to continue?')
+      if not YesNoTrice():
+        return 1
+      release.revert()
+      release.reset()
+      return 0
+
+    if self.resetRelease:
+      release.reset()
+
+    if not builder.mavenDeployer:
+      print('No Maven deployment arguments were set')
+      return 0
+    if builder.mavenDeployer.snapshot:
+      print('Cannot release Maven snapshots')
+      return 0
+    if not builder.bintrayDeployer:
+      print('No Bintray deployment arguments were set')
+      return 0
+
+    print('Performing release')
+    release.release()
+
     return 0
 
 
@@ -588,10 +740,26 @@ class MetaborgRelengGenEclipse(cli.Application):
   def main(self):
     print('Generating plain Eclipse instance')
 
+    if self.os:
+      if not Os.exists(self.os):
+        print('ERROR: operating system {} does not exist'.format(self.os))
+        return 1
+      eclipseOs = Os[self.os].value
+    else:
+      eclipseOs = Os.get_current()
+
+    if self.arch:
+      if not Arch.exists(self.arch):
+        print('ERROR: architecture {} does not exist'.format(self.arch))
+        return 1
+      eclipseArch = Arch[self.arch].value
+    else:
+      eclipseArch = Arch.get_current()
+
     generator = MetaborgEclipseGenerator(self.parent.repo.working_tree_dir, self.destination,
-      EclipseConfiguration(os=self.os, arch=self.arch), spoofax=False, moreRepos=self.moreRepos, moreIUs=self.moreIUs,
-      archive=self.archive)
-    generator.generate(fixIni=True, addJre=self.addJre, archiveJreSeparately=self.archiveJreSeparately)
+      spoofax=False, moreRepos=self.moreRepos, moreIUs=self.moreIUs)
+    generator.generate(os=eclipseOs, arch=eclipseArch, fixIni=True, addJre=self.addJre,
+      archiveJreSeparately=self.archiveJreSeparately, archive=self.archive)
 
     return 0
 
@@ -660,12 +828,28 @@ class MetaborgRelengGenSpoofax(cli.Application):
   def main(self):
     print('Generating Eclipse instance for Spoofax users')
 
+    if self.os:
+      if not Os.exists(self.os):
+        print('ERROR: operating system {} does not exist'.format(self.os))
+        return 1
+      eclipseOs = Os[self.os].value
+    else:
+      eclipseOs = Os.get_current()
+
+    if self.arch:
+      if not Arch.exists(self.arch):
+        print('ERROR: architecture {} does not exist'.format(self.arch))
+        return 1
+      eclipseArch = Arch[self.arch].value
+    else:
+      eclipseArch = Arch.get_current()
+
     generator = MetaborgEclipseGenerator(self.parent.repo.working_tree_dir, self.destination,
-      EclipseConfiguration(os=self.os, arch=self.arch), spoofax=True, spoofaxRepo=self.spoofaxRepo,
+      spoofax=True, spoofaxRepo=self.spoofaxRepo,
       spoofaxRepoLocal=self.localSpoofax, langDev=not self.noMeta, lwbDev=not self.noMeta, moreRepos=self.moreRepos,
-      moreIUs=self.moreIUs, archive=self.archive)
-    generator.generate(fixIni=True, addJre=self.addJre, archiveJreSeparately=self.archiveJreSeparately,
-      archivePrefix='spoofax')
+      moreIUs=self.moreIUs)
+    generator.generate(os=eclipseOs, arch=eclipseArch, fixIni=True, addJre=self.addJre,
+      archiveJreSeparately=self.archiveJreSeparately, archive=self.archive, archivePrefix='spoofax')
 
     return 0
 
