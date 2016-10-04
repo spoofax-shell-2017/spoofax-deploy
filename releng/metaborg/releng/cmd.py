@@ -474,7 +474,7 @@ class MetaborgBuildShared(cli.Application):
         raise Exception('Cannot deploy to Maven: Maven deploy server URL was not set')
       if not mavenDeployIdentifier:
         raise Exception('Cannot deploy to Maven: Maven deploy server identifier was not set')
-      builder.mavenDeployer = MetaborgMavenDeployer(repo.working_tree_dir, mavenDeployUrl, mavenDeployUrl,
+      builder.mavenDeployer = MetaborgMavenDeployer(repo.working_tree_dir, mavenDeployIdentifier, mavenDeployUrl,
         snapshot=versionIsSnapshot)
     else:
       builder.mavenDeployer = None
