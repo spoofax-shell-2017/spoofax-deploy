@@ -1,6 +1,7 @@
 import os
 from os import path
 
+import jprops
 from git.repo.base import Repo
 from plumbum import cli
 
@@ -20,11 +21,34 @@ from metaborg.util.path import CommonPrefix
 from metaborg.util.prompt import YesNo, YesNoTrice, YesNoTwice
 
 
+class BuildProperties(object):
+  def __init__(self, location=None):
+    if location and os.path.isfile(location):
+      with open(location, 'rb') as file:
+        self.properties = jprops.load_properties(file)
+    else:
+      self.properties = []
+
+  def get(self, key, default=None):
+    if key in self.properties:
+      return self.properties[key]
+    else:
+      return default
+
+  def get_bool(self, key, default):
+    if key in self.properties:
+      value = self.properties[key]
+      return value.casefold() == 'true'.casefold() or value == '1'
+    else:
+      return default
+
+
 class MetaborgReleng(cli.Application):
   PROGNAME = 'b'
 
   repoDirectory = '.'
   repo = None
+  buildProps = None
 
   @cli.switch(names=["--repo", "-r"], argtype=str)
   def repo_directory(self, directory):
@@ -40,8 +64,8 @@ class MetaborgReleng(cli.Application):
       self.help()
       return 1
     cli.ExistingDirectory(self.repoDirectory)
-
     self.repo = Repo(self.repoDirectory)
+    self.buildProps = BuildProperties(os.path.join(self.repo.working_tree_dir, 'build.properties'))
     return 0
 
 
@@ -291,6 +315,11 @@ class MetaborgRelengSetVersions(cli.Application):
 
 
 class MetaborgBuildShared(cli.Application):
+  buildVersion = cli.SwitchAttr(
+    names=['--version'], argtype=str, default=None,
+    help='Version to build',
+    group='Build'
+  )
   offline = cli.Flag(
     names=['-O', '--offline'], default=False,
     help='Pass offline flag to builds',
@@ -374,12 +403,6 @@ class MetaborgBuildShared(cli.Application):
     help='URL of the deployment server',
     group='Maven'
   )
-  mavenDeployRelease = cli.Flag(
-    names=['--maven-deploy-release'], default=False,
-    requires=['--maven-deploy'],
-    help='Whether the artifacts to deploy are release artifacts',
-    group='Maven'
-  )
 
   gradleNoNative = cli.Flag(
     names=['-N', '--gradle-no-native'], default=False,
@@ -409,12 +432,6 @@ class MetaborgBuildShared(cli.Application):
     help='Repository to use for deploying to Bintray',
     group='Bintray'
   )
-  bintrayVersion = cli.SwitchAttr(
-    names=['--bintray-version'], argtype=str, default=None,
-    requires=['--bintray-deploy'],
-    help='Version to use for deploying to Bintray',
-    group='Bintray'
-  )
   bintrayUsername = cli.SwitchAttr(
     names=['--bintray-username'], argtype=str, default=None,
     requires=['--bintray-deploy'],
@@ -428,15 +445,21 @@ class MetaborgBuildShared(cli.Application):
     group='Bintray'
   )
 
-  def make_builder(self, repo, buildDeps=True, bintrayVersionOverride=None):
+  def make_builder(self, repo, buildProps, buildDeps=True, versionOverride=None):
     builder = RelengBuilder(repo, buildDeps=buildDeps)
+
+    version = buildProps.get('version', versionOverride or self.buildVersion)
+    if version:
+      versionIsSnapshot = 'SNAPSHOT' in version
+    else:
+      versionIsSnapshot = True
 
     builder.offline = self.offline
     builder.debug = self.debug
     builder.quiet = self.quiet
 
-    builder.bootstrapStratego = self.strategoBootstrap
-    builder.testStratego = not self.strategoNoTests
+    builder.bootstrapStratego = buildProps.get_bool('stratego.bootstrap', self.strategoBootstrap)
+    builder.testStratego = buildProps.get_bool('stratego.test', not self.strategoNoTests)
 
     builder.mavenSettingsFile = self.mavenSettings
     builder.mavenGlobalSettingsFile = self.mavenGlobalSettings
@@ -444,33 +467,36 @@ class MetaborgBuildShared(cli.Application):
     builder.mavenCleanLocalRepo = self.mavenCleanRepo
     builder.mavenOpts = '-Xss{} -Xms{} -Xmx{}'.format(self.jvmStack, self.jvmMinHeap, self.jvmMaxHeap)
 
-    if self.mavenDeploy:
-      if not self.mavenDeployUrl:
-        raise Exception('Maven deploy server URL was not set')
-      if not self.mavenDeployIdentifier:
-        raise Exception('Maven deploy server identifier was not set')
-      builder.mavenDeployer = MetaborgMavenDeployer(repo.working_tree_dir, self.mavenDeployIdentifier,
-        self.mavenDeployUrl, snapshot=not self.mavenDeployRelease)
+    if buildProps.get_bool('maven.deploy.enable', self.mavenDeploy):
+      mavenDeployIdentifier = buildProps.get('maven.deploy.id', self.mavenDeployIdentifier)
+      mavenDeployUrl = buildProps.get('maven.deploy.url', self.mavenDeployUrl)
+      if not mavenDeployUrl:
+        raise Exception('Cannot deploy to Maven: Maven deploy server URL was not set')
+      if not mavenDeployIdentifier:
+        raise Exception('Cannot deploy to Maven: Maven deploy server identifier was not set')
+      builder.mavenDeployer = MetaborgMavenDeployer(repo.working_tree_dir, mavenDeployUrl, mavenDeployUrl,
+        snapshot=versionIsSnapshot)
     else:
       builder.mavenDeployer = None
 
     builder.gradleNoNative = self.gradleNoNative
     builder.gradleDaemon = False if self.gradleNoDaemon else None
 
-    if self.bintrayDeploy:
-      if not self.bintrayRepository:
-        raise Exception('Bintray repository was not set')
-      bintrayVersion = self.bintrayVersion or bintrayVersionOverride
-      if not bintrayVersion:
-        raise Exception('Bintray version was not set')
+    if buildProps.get_bool('bintray.deploy.enable', self.bintrayDeploy):
+      bintrayOrganization = buildProps.get('bintray.deploy.organization', self.bintrayOrganization)
+      bintrayRepository = buildProps.get('bintray.deploy.repository', self.bintrayRepository)
+      if not bintrayRepository:
+        raise Exception('Cannot deploy to Bintray: Bintray repository was not set')
+      if not version:
+        raise Exception('Cannot deploy to Bintray: version was not set')
       bintrayUsername = self.bintrayUsername or os.environ.get('BINTRAY_USERNAME')
       if not bintrayUsername:
-        raise Exception('Bintray username was not set')
+        raise Exception('Cannot deploy to Bintray: Bintray username was not set')
       bintrayKey = self.bintrayKey or os.environ.get('BINTRAY_KEY')
       if not bintrayKey:
-        raise Exception('Bintray key was not set')
-      builder.bintrayDeployer = MetaborgBintrayDeployer(self.bintrayOrganization, self.bintrayRepository,
-        bintrayVersion, bintrayUsername, bintrayKey)
+        raise Exception('Cannot deploy to Bintray: Bintray key was not set')
+      builder.bintrayDeployer = MetaborgBintrayDeployer(bintrayOrganization, bintrayRepository, version,
+        bintrayUsername, bintrayKey)
     else:
       builder.bintrayDeployer = None
 
@@ -531,7 +557,8 @@ class MetaborgRelengBuild(MetaborgBuildShared):
 
   def main(self, *components):
     repo = self.parent.repo
-    builder = self.make_builder(repo, buildDeps=not self.noDeps)
+    buildProps = self.parent.buildProps
+    builder = self.make_builder(repo, buildProps, buildDeps=not self.noDeps)
 
     if len(components) == 0:
       print('No components specified, pass one or more of the following components to build:')
@@ -541,9 +568,9 @@ class MetaborgRelengBuild(MetaborgBuildShared):
     builder.clean = not self.noClean
     builder.skipTests = self.noTests
     builder.generateJavaDoc = self.generateJavaDoc
-    builder.copyArtifactsTo = self.copyArtifacts
+    builder.copyArtifactsTo = buildProps.get('build.artifact.copy', self.copyArtifacts)
 
-    builder.buildStratego = self.strategoBuild
+    builder.buildStratego = buildProps.get_bool('stratego.build', self.strategoBuild)
 
     if self.eclipseQualifier:
       qualifier = self.eclipseQualifier
@@ -608,8 +635,8 @@ class MetaborgRelengRelease(MetaborgBuildShared):
         'Cannot perform release on the same repository this script is contained in, please set another repository '
         'using the -r/--repo switch.')
       return 1
-
-    builder = self.make_builder(repo, bintrayVersionOverride=nextReleaseVersion)
+    buildProps = self.parent.buildProps
+    builder = self.make_builder(repo, buildProps, versionOverride=nextReleaseVersion)
 
     release = MetaborgRelease(repo, releaseBranch, nextReleaseVersion, developBranch, curDevelopVersion, builder)
 
