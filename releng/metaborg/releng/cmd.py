@@ -22,33 +22,36 @@ from metaborg.util.prompt import YesNo, YesNoTrice, YesNoTwice
 
 
 class BuildProperties(object):
-  def __init__(self, location=None):
-    if location and os.path.isfile(location):
-      with open(location, 'rb') as file:
-        self.properties = jprops.load_properties(file)
-    else:
-      self.properties = []
+  def __init__(self, rootDir, locations=None):
+    allProperties = []
+    if locations is not None:
+      for location in locations:
+        absLoc = os.path.join(rootDir, location)
+        if os.path.isfile(absLoc):
+          with open(absLoc, 'rb') as file:
+            allProperties.append(jprops.load_properties(file))
+    self.allProperties = allProperties
 
   def get(self, key, default=None):
-    if key in self.properties:
-      return self.properties[key]
-    else:
-      return default
+    for properties in self.allProperties:
+      if key in properties:
+        return properties[key]
+    return default
 
   def get_bool(self, key, default):
-    if key in self.properties:
-      value = self.properties[key]
-      return value.casefold() == 'true'.casefold() or value == '1'
-    else:
-      return default
+    for properties in self.allProperties:
+      if key in properties:
+        value = properties[key]
+        return value.casefold() == 'true'.casefold() or value == '1'
+    return default
 
   def get_list(self, key, defaults=None):
-    if key in self.properties:
-      value = self.properties[key]
-      values = value.split()
-      return values
-    else:
-      return [] if defaults is None else defaults
+    for properties in self.allProperties:
+      if key in properties:
+        value = properties[key]
+        values = value.split()
+        return values
+    return defaults if defaults is not None else []
 
 
 class MetaborgReleng(cli.Application):
@@ -66,6 +69,11 @@ class MetaborgReleng(cli.Application):
     """
     self.repoDirectory = directory
 
+  propertyFiles = cli.SwitchAttr(
+    names=['-p', '--properties'], argtype=str, list=True,
+    help="Load properties from file. If none are set, defaults to 'build.properties'"
+  )
+
   def main(self):
     if not self.nested_command:
       print('Error: no command given')
@@ -73,7 +81,11 @@ class MetaborgReleng(cli.Application):
       return 1
     cli.ExistingDirectory(self.repoDirectory)
     self.repo = Repo(self.repoDirectory)
-    self.buildProps = BuildProperties(os.path.join(self.repo.working_tree_dir, 'build.properties'))
+    if self.propertyFiles:
+      propertyFiles = self.propertyFiles
+    else:
+      propertyFiles = ['build.properties']
+    self.buildProps = BuildProperties(self.repo.working_tree_dir, propertyFiles)
     return 0
 
 
@@ -501,8 +513,8 @@ class MetaborgBuildShared(cli.Application):
     else:
       builder.mavenDeployer = None
 
-    builder.gradleNoNative = self.gradleNoNative
-    builder.gradleDaemon = False if self.gradleNoDaemon else None
+    builder.gradleNative = buildProps.get_bool('gradle.native', not self.gradleNoNative)
+    builder.gradleDaemon = buildProps.get_bool('gradle.daemon', not self.gradleNoDaemon)
 
     if buildProps.get_bool('bintray.deploy.enable', self.bintrayDeploy):
       bintrayOrganization = buildProps.get('bintray.deploy.organization', self.bintrayOrganization)

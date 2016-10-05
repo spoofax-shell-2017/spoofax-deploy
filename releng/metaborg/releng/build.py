@@ -42,7 +42,7 @@ class RelengBuilder(object):
 
     self.mavenDeployer = None
 
-    self.gradleNoNative = False
+    self.gradleNative = False
     self.gradleDaemon = None
 
     self.bintrayDeployer = None
@@ -137,7 +137,7 @@ class RelengBuilder(object):
     gradle.debug = self.debug
     gradle.quiet = self.quiet
     gradle.mavenLocalRepo = self.mavenLocalRepo
-    gradle.noNative = self.gradleNoNative
+    gradle.noNative = not self.gradleNative
     gradle.daemon = self.gradleDaemon
 
     if self.mavenCleanLocalRepo:
