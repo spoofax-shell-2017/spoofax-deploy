@@ -2,10 +2,10 @@ import os
 from os import path
 
 import jprops
+from eclipsegen.generate import Os, Arch
 from git.repo.base import Repo
 from plumbum import cli
 
-from eclipsegen.generate import Os, Arch
 from metaborg.releng.bootstrap import Bootstrap
 from metaborg.releng.build import RelengBuilder
 from metaborg.releng.deploy import MetaborgBintrayDeployer, MetaborgMavenDeployer
@@ -41,6 +41,14 @@ class BuildProperties(object):
       return value.casefold() == 'true'.casefold() or value == '1'
     else:
       return default
+
+  def get_list(self, key, defaults=None):
+    if key in self.properties:
+      value = self.properties[key]
+      values = value.split()
+      return values
+    else:
+      return [] if defaults is None else defaults
 
 
 class MetaborgReleng(cli.Application):
@@ -349,6 +357,17 @@ class MetaborgBuildShared(cli.Application):
     group='StrategoXT'
   )
 
+  eclipseGenMoreRepos = cli.SwitchAttr(
+    names=['--eclipse-gen-repo'], argtype=str, list=True,
+    help='Additional repositories to install units from in Eclipse instance generation',
+    group='Eclipse generation'
+  )
+  eclipseGenMoreIUs = cli.SwitchAttr(
+    names=['--eclipse-gen-install'], argtype=str, list=True,
+    help='Additional units to install in Eclipse instance generation',
+    group='Eclipse generation'
+  )
+
   jvmStack = cli.SwitchAttr(
     names=['--jvm-stack'], default="16M",
     help="JVM stack size",
@@ -460,6 +479,9 @@ class MetaborgBuildShared(cli.Application):
 
     builder.bootstrapStratego = buildProps.get_bool('stratego.bootstrap', self.strategoBootstrap)
     builder.testStratego = buildProps.get_bool('stratego.test', not self.strategoNoTests)
+
+    builder.eclipseGenMoreRepos = buildProps.get_list('eclipse.generate.repos', self.eclipseGenMoreRepos)
+    builder.eclipseGenMoreIUs = buildProps.get_list('eclipse.generate.ius', self.eclipseGenMoreIUs)
 
     builder.mavenSettingsFile = self.mavenSettings
     builder.mavenGlobalSettingsFile = self.mavenGlobalSettings
@@ -845,9 +867,8 @@ class MetaborgRelengGenSpoofax(cli.Application):
       eclipseArch = Arch.get_current()
 
     generator = MetaborgEclipseGenerator(self.parent.repo.working_tree_dir, self.destination,
-      spoofax=True, spoofaxRepo=self.spoofaxRepo,
-      spoofaxRepoLocal=self.localSpoofax, langDev=not self.noMeta, lwbDev=not self.noMeta, moreRepos=self.moreRepos,
-      moreIUs=self.moreIUs)
+      spoofax=True, spoofaxRepo=self.spoofaxRepo, spoofaxRepoLocal=self.localSpoofax, langDev=not self.noMeta,
+      lwbDev=not self.noMeta, moreRepos=self.moreRepos, moreIUs=self.moreIUs)
     generator.generate(os=eclipseOs, arch=eclipseArch, fixIni=True, addJre=self.addJre,
       archiveJreSeparately=self.archiveJreSeparately, archive=self.archive, archivePrefix='spoofax')
 

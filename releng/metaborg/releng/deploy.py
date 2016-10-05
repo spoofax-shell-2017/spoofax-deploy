@@ -2,13 +2,13 @@ import os
 import shutil
 
 from bintraypy.bintray import Bintray
-from buildorchestra.result import Artifact
+from buildorchestra.result import FileArtifact
 from mavenpy.run import Maven
 
 
-class MetaborgArtifact(Artifact):
-  def __init__(self, name, package, location, target):
-    super(MetaborgArtifact, self).__init__(name, location, target)
+class MetaborgFileArtifact(FileArtifact):
+  def __init__(self, name, package, srcFile, dstFile):
+    super().__init__(name, srcFile, dstFile)
     self.package = package
 
 
