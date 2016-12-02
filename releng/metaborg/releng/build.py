@@ -75,9 +75,7 @@ class RelengBuilder(object):
     eclipsePrereqs = add_main_target('eclipse-prereqs', allLangDeps + [], RelengBuilder.__build_eclipse_prereqs)
     eclipse = add_main_target('eclipse', allLangDeps + [eclipsePrereqs], RelengBuilder.__build_eclipse)
 
-    intellijPrereqs = add_main_target('intellij-prereqs', allLangDeps + [], RelengBuilder.__build_intellij_prereqs)
-    intellijJps = add_main_target('intellij-jps', allLangDeps + [intellijPrereqs], RelengBuilder.__build_intellij_jps)
-    add_main_target('intellij', allLangDeps + [intellijJps], RelengBuilder.__build_intellij)
+    intellij = add_main_target('intellij', allLangDeps, RelengBuilder.__build_intellij)
 
     builder.add_target('all', mainTargets)
 
@@ -363,20 +361,8 @@ class RelengBuilder(object):
     return StepResult(artifacts)
 
   @staticmethod
-  def __build_intellij_prereqs(basedir, gradle, **_):
-    target = 'publishToMavenLocal'  # TODO: Deploy
-    cwd = os.path.join(basedir, 'spoofax-intellij', 'org.metaborg.jps-deps')
-    gradle.run_in_dir(cwd, target)
-
-  @staticmethod
-  def __build_intellij_jps(basedir, gradle, **_):
-    target = 'install'  # TODO: Deploy
-    cwd = os.path.join(basedir, 'spoofax-intellij', 'org.metaborg.jps')
-    gradle.run_in_dir(cwd, target)
-
-  @staticmethod
   def __build_intellij(basedir, gradle, **_):
-    target = 'buildPlugin'  # TODO: Deploy
+    target = 'install'
     cwd = os.path.join(basedir, 'spoofax-intellij', 'org.metaborg.intellij')
     gradle.run_in_dir(cwd, target)
     return StepResult([
