@@ -75,9 +75,7 @@ class RelengBuilder(object):
     eclipsePrereqs = add_main_target('eclipse-prereqs', allLangDeps + [], RelengBuilder.__build_eclipse_prereqs)
     eclipse = add_main_target('eclipse', allLangDeps + [eclipsePrereqs], RelengBuilder.__build_eclipse)
 
-    intellijPrereqs = add_main_target('intellij-prereqs', allLangDeps + [], RelengBuilder.__build_intellij_prereqs)
-    intellijJps = add_main_target('intellij-jps', allLangDeps + [intellijPrereqs], RelengBuilder.__build_intellij_jps)
-    add_main_target('intellij', allLangDeps + [intellijJps], RelengBuilder.__build_intellij)
+    intellij = add_main_target('intellij', allLangDeps, RelengBuilder.__build_intellij)
 
     builder.add_target('all', mainTargets)
 
@@ -227,7 +225,7 @@ class RelengBuilder(object):
     maven.run(cwd, 'download-pom.xml', 'dependency:resolve')
 
   @staticmethod
-  def __build_strategoxt(basedir, bootstrapStratego, testStratego, skipTests, maven, mavenDeployer, **_):
+  def __build_strategoxt(basedir, bootstrapStratego, testStratego, skipTests, eclipseQualifier, maven, mavenDeployer, **_):
     target = 'deploy' if mavenDeployer else 'install'
 
     # Build StrategoXT
@@ -235,7 +233,7 @@ class RelengBuilder(object):
       buildFile = os.path.join('bootstrap-pom.xml')
     else:
       buildFile = os.path.join('build-pom.xml')
-    properties = {'strategoxt-skip-test': skipTests or not testStratego}
+    properties = {'strategoxt-skip-test': skipTests or not testStratego, 'forceContextQualifier': eclipseQualifier}
     strategoXtDir = os.path.join(basedir, 'strategoxt', 'strategoxt')
     maven.run(strategoXtDir, buildFile, target, **properties)
 
@@ -259,10 +257,10 @@ class RelengBuilder(object):
     ])
 
   @staticmethod
-  def __build_java(basedir, maven, mavenDeployer, **_):
+  def __build_java(basedir, eclipseQualifier, maven, mavenDeployer, **_):
     target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'releng', 'build', 'java')
-    maven.run_in_dir(cwd, target)
+    maven.run_in_dir(cwd, target, forceContextQualifier=eclipseQualifier)
     return StepResult([
       FileArtifact(
         'Spoofax sunshine JAR',
@@ -271,10 +269,10 @@ class RelengBuilder(object):
     ])
 
   @staticmethod
-  def __build_java_uber(basedir, maven, mavenDeployer, **_):
+  def __build_java_uber(basedir, eclipseQualifier, maven, mavenDeployer, **_):
     target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'spoofax', 'org.metaborg.spoofax.core.uber')
-    maven.run_in_dir(cwd, target)
+    maven.run_in_dir(cwd, target, forceContextQualifier=eclipseQualifier)
     return StepResult([
       FileArtifact(
         'Spoofax uber JAR',
@@ -283,10 +281,10 @@ class RelengBuilder(object):
     ])
 
   @staticmethod
-  def __build_java_libs(basedir, maven, mavenDeployer, **_):
+  def __build_java_libs(basedir, eclipseQualifier, maven, mavenDeployer, **_):
     target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'releng', 'build', 'libs')
-    maven.run_in_dir(cwd, target)
+    maven.run_in_dir(cwd, target, forceContextQualifier=eclipseQualifier)
     return StepResult([
       FileArtifact(
         'Spoofax libraries JAR',
@@ -307,19 +305,19 @@ class RelengBuilder(object):
     maven.run_in_dir(cwd, target)
 
   @staticmethod
-  def __build_dynsem(basedir, maven, mavenDeployer, **_):
+  def __build_dynsem(basedir, eclipseQualifier, maven, mavenDeployer, **_):
     target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'releng', 'build', 'language', 'dynsem')
     # Don't skip expensive steps, always clean, because of incompatibilities/bugs with annotation processor.
     if 'clean' not in maven.targets:
       maven.targets.insert(0, 'clean')
-    maven.run_in_dir(cwd, target)
+    maven.run_in_dir(cwd, target, forceContextQualifier=eclipseQualifier)
 
   @staticmethod
-  def __build_spt(basedir, maven, mavenDeployer, **_):
+  def __build_spt(basedir, eclipseQualifier, maven, mavenDeployer, **_):
     target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'releng', 'build', 'language', 'spt')
-    maven.run_in_dir(cwd, target)
+    maven.run_in_dir(cwd, target, forceContextQualifier=eclipseQualifier)
     return StepResult([
       FileArtifact(
         'SPT testrunner JAR',
@@ -363,20 +361,8 @@ class RelengBuilder(object):
     return StepResult(artifacts)
 
   @staticmethod
-  def __build_intellij_prereqs(basedir, gradle, **_):
-    target = 'publishToMavenLocal'  # TODO: Deploy
-    cwd = os.path.join(basedir, 'spoofax-intellij', 'org.metaborg.jps-deps')
-    gradle.run_in_dir(cwd, target)
-
-  @staticmethod
-  def __build_intellij_jps(basedir, gradle, **_):
-    target = 'install'  # TODO: Deploy
-    cwd = os.path.join(basedir, 'spoofax-intellij', 'org.metaborg.jps')
-    gradle.run_in_dir(cwd, target)
-
-  @staticmethod
   def __build_intellij(basedir, gradle, **_):
-    target = 'buildPlugin'  # TODO: Deploy
+    target = 'install'
     cwd = os.path.join(basedir, 'spoofax-intellij', 'org.metaborg.intellij')
     gradle.run_in_dir(cwd, target)
     return StepResult([
