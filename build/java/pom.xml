@@ -27,7 +27,8 @@
     <module>${repo.root}/mb-rep/org.spoofax.terms</module>
     <module>${repo.root}/mb-rep/org.spoofax.terms.typesmart</module>
     <module>${repo.root}/mb-rep/org.spoofax.interpreter.library.index</module>
-
+    <module>${repo.root}/mb-rep/org.metaborg.scalaterms</module>
+    
     <!-- Execution -->
     <module>${repo.root}/mb-exec/org.metaborg.util</module>
     <module>${repo.root}/mb-exec/org.spoofax.interpreter.core</module>
