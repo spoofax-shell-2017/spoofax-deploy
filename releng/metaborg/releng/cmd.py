@@ -8,7 +8,7 @@ from plumbum import cli
 
 from metaborg.releng.bootstrap import Bootstrap
 from metaborg.releng.build import RelengBuilder
-from metaborg.releng.deploy import MetaborgBintrayDeployer, MetaborgMavenDeployer
+from metaborg.releng.deploy import MetaborgBintrayDeployer, MetaborgMavenDeployer, MetaborgNexusDeployer
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
 from metaborg.releng.icon import GenerateIcons
 from metaborg.releng.maven import MetaborgMavenSettingsGeneratorGenerator
@@ -446,9 +446,39 @@ class MetaborgBuildShared(cli.Application):
     group='Gradle'
   )
 
+  nexusDeploy = cli.Flag(
+    names=['--nexus-deploy'], default=False,
+    help='Enable deploying to a Nexus repository',
+    group='Nexus'
+  )
+  nexusUrl = cli.SwitchAttr(
+    names=['--nexus-url'], argtype=str, default='http://artifacts.metaborg.org',
+    requires=['--nexus-deploy'],
+    help='URL of the Nexus repository server',
+    group='Nexus'
+  )
+  nexusRepository = cli.SwitchAttr(
+    names=['--nexus-repo'], argtype=str, default='releases',
+    requires=['--nexus-deploy'],
+    help='Repository to use for deploying to Nexus',
+    group='Nexus'
+  )
+  nexusUsername = cli.SwitchAttr(
+    names=['--nexus-username'], argtype=str, default=None,
+    requires=['--nexus-deploy'],
+    help='Nexus username to use for deploying. When not set, defaults to the NEXUS_USERNAME environment variable',
+    group='Nexus'
+  )
+  nexusPassword = cli.SwitchAttr(
+    names=['--nexus-password'], argtype=str, default=None,
+    requires=['--nexus-deploy'],
+    help='Nexus password to use for deploying. When not set, defaults to the NEXUS_PASSWORD environment variable',
+    group='Nexus'
+  )
+
   bintrayDeploy = cli.Flag(
-    names=['-D', '--bintray-deploy'], default=False,
-    help='Enable deploying to bintray',
+    names=['--bintray-deploy'], default=False,
+    help='Enable deploying to Bintray',
     group='Bintray'
   )
   bintrayOrganization = cli.SwitchAttr(
@@ -515,6 +545,25 @@ class MetaborgBuildShared(cli.Application):
 
     builder.gradleNative = buildProps.get_bool('gradle.native', not self.gradleNoNative)
     builder.gradleDaemon = buildProps.get_bool('gradle.daemon', not self.gradleNoDaemon)
+
+    if buildProps.get_bool('nexus.deploy.enable', self.nexusDeploy):
+      nexusUrl = buildProps.get('nexus.deploy.url', self.nexusUrl)
+      if not nexusUrl:
+        raise Exception('Cannot deploy to Nexus: URL was not set')
+      nexusRepository = buildProps.get('nexus.deploy.repository', self.nexusRepository)
+      if not nexusRepository:
+        raise Exception('Cannot deploy to Nexus: repository was not set')
+      if not version:
+        raise Exception('Cannot deploy to Nexus: version was not set')
+      nexusUsername = self.nexusUsername or os.environ.get('NEXUS_USERNAME')
+      if not nexusUsername:
+        raise Exception('Cannot deploy to Nexus: username was not set')
+      nexusPassword = self.nexusPassword or os.environ.get('NEXUS_PASSWORD')
+      if not nexusPassword:
+        raise Exception('Cannot deploy to Nexus: password was not set')
+      builder.nexusDeployer = MetaborgNexusDeployer(nexusUrl, nexusRepository, version, nexusUsername, nexusPassword)
+    else:
+      builder.nexusDeployer = None
 
     if buildProps.get_bool('bintray.deploy.enable', self.bintrayDeploy):
       bintrayOrganization = buildProps.get('bintray.deploy.organization', self.bintrayOrganization)
