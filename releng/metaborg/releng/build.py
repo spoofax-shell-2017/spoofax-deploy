@@ -9,7 +9,7 @@ from gradlepy.run import Gradle
 from mavenpy.run import Maven
 from pyfiglet import Figlet
 
-from metaborg.releng.deploy import MetaborgFileArtifact
+from metaborg.releng.deploy import MetaborgFileArtifact, BintrayMetadata, NexusMetadata
 from metaborg.releng.eclipse import MetaborgEclipseGenerator
 from metaborg.util.git import create_qualifier
 
@@ -45,6 +45,7 @@ class RelengBuilder(object):
     self.gradleNative = False
     self.gradleDaemon = None
 
+    self.nexusDeployer = None
     self.bintrayDeployer = None
 
     builder = Builder(copyOptions=True, dependencyAnalysis=buildDeps)
@@ -167,8 +168,13 @@ class RelengBuilder(object):
       print(figlet.renderText('Deploying Maven artifacts'))
       self.mavenDeployer.maven_remote_deploy()
 
+    if self.nexusDeployer:
+      print(figlet.renderText('Deploying artifacts to Nexus'))
+      for artifact in result.artifacts:
+        self.nexusDeployer.artifact_remote_deploy(artifact)
+
     if self.bintrayDeployer:
-      print(figlet.renderText('Deploying other artifacts'))
+      print(figlet.renderText('Deploying artifacts to Bintray'))
       for artifact in result.artifacts:
         self.bintrayDeployer.artifact_remote_deploy(artifact)
 
@@ -248,12 +254,16 @@ class RelengBuilder(object):
       distribDir = os.path.join(strategoXtDir, 'buildpoms', 'build', 'target')
 
     return StepResult([
-      MetaborgFileArtifact('StrategoXT distribution', 'strategoxt-distrib',
+      FileArtifact(
+        'StrategoXT distribution',
         _glob_one('{}/strategoxt-distrib-*-bin.tar'.format(distribDir)),
-        os.path.join('strategoxt', 'distrib.tar')),
-      MetaborgFileArtifact('StrategoXT JAR', 'strategoxt-jar',
+        os.path.join('strategoxt', 'distrib.tar')
+      ),
+      FileArtifact(
+        'StrategoXT JAR',
         '{}/dist/share/strategoxt/strategoxt/strategoxt.jar'.format(distribDir),
-        os.path.join('strategoxt', 'strategoxt.jar')),
+        os.path.join('strategoxt', 'strategoxt.jar')
+      ),
     ])
 
   @staticmethod
@@ -356,8 +366,12 @@ class RelengBuilder(object):
     for archive in archives:
       location = archive.location
       target = os.path.join('spoofax', 'eclipse', os.path.basename(location))
-      # TODO: switch back to MetaborgArtifact once we can upload larger files to Bintray.
-      artifacts.append(FileArtifact('Spoofax Eclipse instance', location, target))
+      artifacts.append(MetaborgFileArtifact(
+        'Spoofax Eclipse instance',
+        location,
+        target,
+        NexusMetadata('org.metaborg', 'org.metaborg.spoofax.eclipse.dist'),
+      ))
     return StepResult(artifacts)
 
   @staticmethod
@@ -366,10 +380,14 @@ class RelengBuilder(object):
     cwd = os.path.join(basedir, 'spoofax-intellij', 'org.metaborg.intellij')
     gradle.run_in_dir(cwd, target)
     return StepResult([
-      MetaborgFileArtifact('Spoofax for IntelliJ IDEA plugin', 'spoofax-intellij-updatesite',
+      MetaborgFileArtifact(
+        'Spoofax for IntelliJ IDEA plugin',
         _glob_one(os.path.join(basedir,
           'spoofax-intellij/org.metaborg.intellij/build/distributions/org.metaborg.intellij-*.zip')),
-        os.path.join('spoofax', 'intellij', 'plugin.zip')),
+        os.path.join('spoofax', 'intellij', 'plugin.zip'),
+        NexusMetadata('org.metaborg', 'org.metaborg.intellij.dist'),
+        BintrayMetadata('spoofax-intellij-updatesite')
+      ),
     ])
 
 
