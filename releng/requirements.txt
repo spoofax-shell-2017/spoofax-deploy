@@ -4,9 +4,10 @@ pystache==0.5.4
 requests==2.7.0
 wand==0.4.1
 pyfiglet==0.7.5
+jprops==1.0
 buildorchestra==0.1.4
 mavenpy==0.1.2
 gradlepy==0.1.2
 eclipsegen==0.2.1
 bintraypy==0.1.1
-jprops==1.0
+nexuspy==0.1.0

@@ -4,12 +4,14 @@ import shutil
 from bintraypy.bintray import Bintray
 from buildorchestra.result import FileArtifact
 from mavenpy.run import Maven
+from nexuspy.nexus import Nexus
 
 
 class MetaborgFileArtifact(FileArtifact):
-  def __init__(self, name, package, srcFile, dstFile):
+  def __init__(self, name, srcFile, dstFile, nexusMetadata=None, bintrayMetadata=None):
     super().__init__(name, srcFile, dstFile)
-    self.package = package
+    self.nexusMetadata = nexusMetadata
+    self.bintrayMetadata = bintrayMetadata
 
 
 class MetaborgMavenDeployer(object):
@@ -54,6 +56,34 @@ class MetaborgMavenDeployer(object):
     maven.run(self.rootPath, None)
 
 
+class NexusMetadata(object):
+  def __init__(self, groupId, artifactId, packaging=None, classifier=None, extension=None):
+    self.groupId = groupId
+    self.artifactId = artifactId
+    self.packaging = packaging
+    self.classifier = classifier
+
+
+class MetaborgNexusDeployer(object):
+  def __init__(self, url, repository, version, username, password):
+    self.repository = repository
+    self.version = version
+    self.nexus = Nexus(url, username, password)
+
+  def artifact_remote_deploy(self, artifact):
+    if not artifact.nexusMetadata:
+      print("Skipping deployment of artifact '{}' to Nexus: no Nexus metadata was set".format(artifact.name))
+      return
+    metadata = artifact.nexusMetadata
+    self.nexus.upload_artifact(artifact.srcFile, self.repository, metadata.groupId, metadata.artifactId, self.version,
+      metadata.packaging, metadata.classifier)
+
+
+class BintrayMetadata(object):
+  def __init__(self, package):
+    self.package = package
+
+
 class MetaborgBintrayDeployer(object):
   def __init__(self, organization, repository, version, username, key):
     self.organization = organization
@@ -62,8 +92,8 @@ class MetaborgBintrayDeployer(object):
     self.bintray = Bintray(username, key)
 
   def artifact_remote_deploy(self, artifact):
-    if not artifact.package:
-      print("Skipping deployment of artifact '{}' to Bintray: no package name was set".format(artifact.name))
+    if not artifact.bintrayMetadata:
+      print("Skipping deployment of artifact '{}' to Bintray: no Bintray metadata was set".format(artifact.name))
       return
-    self.bintray.upload_generic(self.organization, self.repository, artifact.package, self.version, artifact.location,
-      artifact.target, publish=True)
+    self.bintray.upload_generic(self.organization, self.repository, artifact.bintrayMetadata.package, self.version,
+      artifact.srcFile, artifact.dstFile, publish=True)
