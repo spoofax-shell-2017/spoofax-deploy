@@ -35,7 +35,7 @@ def Bootstrap(repo, curVersion, curBaselineVersion):
         if not YesNo():
           return
       print('Step 1: for each submodule: set version from the current version to the next baseline version')
-      SetVersions(repo, curVersion, nextBaselineVersion, setEclipseVersions=False, dryRun=False, commit=False)
+      SetVersions(repo, curVersion, nextBaselineVersion, dryRun=False, commit=False)
       db['state'] = 1
       db['version'] = nextBaselineVersion
       print('Please check if versions have been set correctly, then continue')
@@ -72,8 +72,8 @@ def Bootstrap(repo, curVersion, curBaselineVersion):
       print(
         'Step 4: for each submodule: revert to previous version, and update baseline version to the next baseline '
         'version')
-      SetVersions(repo, nextBaselineVersion, curVersion, setEclipseVersions=False, dryRun=False, commit=False)
-      SetVersions(repo, curBaselineVersion, nextBaselineVersion, setEclipseVersions=False, dryRun=False, commit=True)
+      SetVersions(repo, nextBaselineVersion, curVersion, dryRun=False, commit=False)
+      SetVersions(repo, curBaselineVersion, nextBaselineVersion, dryRun=False, commit=True)
       print('Updating submodule revisions')
       repo.git.add('--all')
       repo.index.commit('Update submodule revisions')
