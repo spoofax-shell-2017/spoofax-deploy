@@ -28,6 +28,19 @@ def Branch(repo):
   return head.reference.name
 
 
+def Fetch(submodule):
+  if not submodule.module_exists():
+    return
+  print('Fetching {}'.format(submodule.name))
+  subrepo = submodule.module()
+  subrepo.git.fetch()
+
+
+def FetchAll(repo):
+  for submodule in repo.submodules:
+    Fetch(submodule)
+
+
 def Update(repo, submodule, remote=True, recursive=True, depth=None):
   args = ['update', '--init']
 
