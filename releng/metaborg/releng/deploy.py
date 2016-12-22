@@ -27,15 +27,15 @@ class MetaborgMavenDeployer(object):
   def maven_local_deploy_properties(self):
     path = self.maven_local_deploy_path()
     return {
-      'altDeploymentRepository': '"local::default::file:{}"'.format(path),
-      'deployRepositoryId'     : '"local"',
+      'altDeploymentRepository': '"local-deploy::default::file:{}"'.format(path),
+      'deployRepositoryId'     : '"local-deploy"',
       'deployFileUrl'          : '"file:{}"'.format(path)
     }
 
   def maven_local_file_deploy_properties(self):
     path = self.maven_local_deploy_path()
     return {
-      'repositoryId': '"local"',
+      'repositoryId': '"local-deploy"',
       'url'         : '"file:{}"'.format(path)
     }
 
@@ -47,7 +47,7 @@ class MetaborgMavenDeployer(object):
     path = self.maven_local_deploy_path()
     maven = Maven()
     maven.properties = {
-      'wagon.sourceId': '"local"',
+      'wagon.sourceId': '"local-deploy"',
       'wagon.source'  : '"file:{}"'.format(path),
       'wagon.targetId': '"{}"'.format(self.identifier),
       'wagon.target'  : '"{}"'.format(self.url),
@@ -57,7 +57,7 @@ class MetaborgMavenDeployer(object):
 
 
 class NexusMetadata(object):
-  def __init__(self, groupId, artifactId, packaging=None, classifier=None, extension=None):
+  def __init__(self, groupId, artifactId, packaging=None, classifier=None):
     self.groupId = groupId
     self.artifactId = artifactId
     self.packaging = packaging
