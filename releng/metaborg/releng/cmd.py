@@ -16,7 +16,7 @@ from metaborg.releng.release import MetaborgRelease
 from metaborg.releng.versions import SetVersions
 from metaborg.util.git import (CheckoutAll, CleanAll, MergeAll, PushAll,
   RemoteType, ResetAll, SetRemoteAll, TagAll,
-  TrackAll, UpdateAll, create_now_qualifier, create_qualifier, repo_changed)
+  TrackAll, UpdateAll, create_now_qualifier, create_qualifier, repo_changed, FetchAll)
 from metaborg.util.path import CommonPrefix
 from metaborg.util.prompt import YesNo, YesNoTrice, YesNoTwice
 
@@ -151,6 +151,7 @@ class MetaborgRelengCleanUpdate(cli.Application):
         return 1
     print('Resetting, cleaning, and updating all submodules')
     repo = self.parent.repo
+    FetchAll(repo)
     CheckoutAll(repo)
     ResetAll(repo, toRemote=True)
     CheckoutAll(repo)
