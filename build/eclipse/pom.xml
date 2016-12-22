@@ -1,66 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<artifactId>build.eclipse</artifactId>
-	<packaging>pom</packaging>
-	<description>Maven build for Eclipse plugins</description>
-	<url>https://github.com/metaborg/spoofax-deploy</url>
+<project
+  xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+>
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>build.eclipse</artifactId>
+  <packaging>pom</packaging>
+  <description>Maven build for Eclipse plugins</description>
+  <url>https://github.com/metaborg/spoofax-deploy</url>
 
-	<parent>
-		<groupId>org.metaborg</groupId>
-		<artifactId>parent</artifactId>
-		<version>2.0.0</version>
-		<relativePath>../../parent</relativePath>
-	</parent>
+  <parent>
+    <groupId>org.metaborg</groupId>
+    <artifactId>parent</artifactId>
+    <version>2.1.0-SNAPSHOT</version>
+    <relativePath>../../parent</relativePath>
+  </parent>
 
-	<properties>
-		<submodule.root>../../</submodule.root>
-		<repo.root>${submodule.root}/../</repo.root>
-	</properties>
+  <properties>
+    <submodule.root>../../</submodule.root>
+    <repo.root>${submodule.root}/../</repo.root>
+  </properties>
 
-	<modules>
-		<!-- Spoofax Eclipse -->
-		<module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse</module>
-		<module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.meta</module>
-		<module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.meta.m2e</module>
-		<module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.util</module>
+  <modules>
+    <!-- Spoofax Eclipse -->
+    <module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse</module>
+    <module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.meta</module>
+    <module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.meta.m2e</module>
+    <module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.util</module>
 
-		<module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.feature</module>
-		<module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.meta.feature</module>
-		<module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.meta.m2e.feature</module>
-		<module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite</module>
+    <module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.feature</module>
+    <module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.meta.feature</module>
+    <module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.meta.m2e.feature</module>
+    <module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.updatesite</module>
 
-		<!-- Meta language Eclipse plugins -->
-		<module>${repo.root}/dynsem/dynsem.eclipse</module>
-		<module>${repo.root}/esv/org.metaborg.meta.lang.esv.eclipse</module>
-		<module>${repo.root}/mb-rep/org.metaborg.meta.lang.aterm.eclipse</module>
-		<module>${repo.root}/nabl/org.metaborg.meta.lang.nabl.eclipse</module>
-		<module>${repo.root}/nabl/org.metaborg.meta.nabl2.shared.eclipse</module>
-		<module>${repo.root}/nabl/org.metaborg.meta.nabl2.lang.eclipse</module>
-		<module>${repo.root}/nabl/org.metaborg.meta.nabl2.runtime.eclipse</module>
-		<module>${repo.root}/runtime-libraries/org.metaborg.meta.lang.analysis.eclipse</module>
-		<module>${repo.root}/runtime-libraries/org.metaborg.meta.lib.analysis.eclipse</module>
-		<module>${repo.root}/sdf/org.metaborg.meta.lang.sdf.eclipse</module>
-		<module>${repo.root}/sdf/org.metaborg.meta.lang.template.eclipse</module>
-		<module>${repo.root}/spt/org.metaborg.meta.lang.spt.eclipse</module>
-		<module>${repo.root}/spt/org.metaborg.meta.lang.spt.interactive.eclipse</module>
-		<module>${repo.root}/stratego/org.metaborg.meta.lang.stratego.eclipse</module>
-		<module>${repo.root}/ts/org.metaborg.meta.lang.ts.eclipse</module>
-	</modules>
+    <!-- Meta language Eclipse plugins -->
+    <module>${repo.root}/dynsem/dynsem.eclipse</module>
+    <module>${repo.root}/dynsem/dynsem2coq.eclipse</module>
+    <module>${repo.root}/esv/org.metaborg.meta.lang.esv.eclipse</module>
+    <module>${repo.root}/mb-rep/org.metaborg.meta.lang.aterm.eclipse</module>
+    <module>${repo.root}/nabl/org.metaborg.meta.lang.nabl.eclipse</module>
+    <module>${repo.root}/nabl/org.metaborg.meta.nabl2.shared.eclipse</module>
+    <module>${repo.root}/nabl/org.metaborg.meta.nabl2.lang.eclipse</module>
+    <module>${repo.root}/nabl/org.metaborg.meta.nabl2.runtime.eclipse</module>
+    <module>${repo.root}/spoofax/meta.lib.spoofax.eclipse</module>
+    <module>${repo.root}/runtime-libraries/org.metaborg.meta.lang.analysis.eclipse</module>
+    <module>${repo.root}/runtime-libraries/org.metaborg.meta.lib.analysis.eclipse</module>
+    <module>${repo.root}/sdf/org.metaborg.meta.lang.sdf.eclipse</module>
+    <module>${repo.root}/sdf/org.metaborg.meta.lang.template.eclipse</module>
+    <module>${repo.root}/spt/org.metaborg.meta.lang.spt.eclipse</module>
+    <module>${repo.root}/spt/org.metaborg.meta.lang.spt.interactive.eclipse</module>
+    <module>${repo.root}/stratego/org.metaborg.meta.lang.stratego.eclipse</module>
+    <module>${repo.root}/ts/org.metaborg.meta.lang.ts.eclipse</module>
+    <module>${repo.root}/metaborg-coq/org.metaborg.lang.coq.eclipse</module>
 
-	<developers>
-		<developer>
-			<name>Gabriël Konat</name>
-			<email>g.d.p.konat@tudelft.nl</email>
-			<organization>Delft University of Technology</organization>
-			<organizationUrl>http://www.ewi.tudelft.nl/en</organizationUrl>
-		</developer>
-	</developers>
+    <!-- SPT testrunner plugin -->
+    <module>${repo.root}/spt/org.metaborg.spt.testrunner.eclipse</module>
+  </modules>
 
-	<scm>
-		<connection>scm:git:git@github.com:metaborg/spoofax-deploy.git</connection>
-		<developerConnection>scm:git:git@github.com:metaborg/spoofax-deploy.git</developerConnection>
-		<url>https://github.com/metaborg/spoofax-deploy</url>
-	</scm>
+  <developers>
+    <developer>
+      <name>Gabriël Konat</name>
+      <email>g.d.p.konat@tudelft.nl</email>
+      <organization>Delft University of Technology</organization>
+      <organizationUrl>http://www.ewi.tudelft.nl/en</organizationUrl>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:git@github.com:metaborg/spoofax-deploy.git</connection>
+    <developerConnection>scm:git:git@github.com:metaborg/spoofax-deploy.git</developerConnection>
+    <url>https://github.com/metaborg/spoofax-deploy</url>
+  </scm>
 </project>

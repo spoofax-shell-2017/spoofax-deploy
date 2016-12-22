@@ -28,9 +28,24 @@ def Branch(repo):
   return head.reference.name
 
 
-def Update(repo, submodule, remote=True, recursive=True, depth=None):
-  args = ['update', '--init', '--recursive']
+def Fetch(submodule):
+  if not submodule.module_exists():
+    return
+  print('Fetching {}'.format(submodule.name))
+  subrepo = submodule.module()
+  subrepo.git.fetch()
 
+
+def FetchAll(repo):
+  for submodule in repo.submodules:
+    Fetch(submodule)
+
+
+def Update(repo, submodule, remote=True, recursive=True, depth=None):
+  args = ['update', '--init']
+
+  if recursive:
+    args.append('--recursive')
   if remote:
     args.append('--remote')
   if depth:
@@ -55,9 +70,9 @@ def Update(repo, submodule, remote=True, recursive=True, depth=None):
   repo.git.submodule(args)
 
 
-def UpdateAll(repo, depth=None):
+def UpdateAll(repo, remote=True, recursive=True, depth=None):
   for submodule in repo.submodules:
-    Update(repo, submodule, depth=depth)
+    Update(repo, submodule, remote=remote, recursive=recursive, depth=depth)
 
 
 def Checkout(repo, submodule):
@@ -128,16 +143,7 @@ def Merge(submodule, branchName):
     return
 
   subrepo = submodule.module()
-  head = subrepo.head
-  if head.is_detached:
-    print('Cannot merge, {} has a DETACHED HEAD.'.format(submodule.name))
-    return
-  branch = subrepo.heads[branchName]
-  if branch is None:
-    print('Cannot merge, branch {} does not exist'.format(branchName))
-    return
-  print('Merging branch {} into {} in {}'.format(branch, head.reference.name, submodule.name))
-  subrepo.index.merge_tree(branch)
+  subrepo.git.merge(branchName)
 
 
 def MergeAll(repo, branchName):
@@ -254,7 +260,7 @@ def create_now_qualifier(repo, branch=None):
 
 
 def _format_qualifier(timestamp, branch):
-  return '{}-{}'.format(timestamp.strftime('%Y%m%d-%H%M%S'), branch)
+  return '{}-{}'.format(timestamp.strftime('%Y%m%d-%H%M%S'), branch.replace('/', '_'))
 
 
 def repo_changed(repo, qualifierLocation):

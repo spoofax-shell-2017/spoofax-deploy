@@ -1,7 +1,7 @@
-from eclipsegen.generate import EclipseGenerator
+from eclipsegen.generate import EclipseGenerator, EclipseMultiGenerator
 
 
-class MetaborgEclipseGenerator(EclipseGenerator):
+class MetaborgEclipseGenerator(object):
   # Eclipse
   eclipseRepos = [
     # Eclipse Neon (4.6)
@@ -79,8 +79,8 @@ class MetaborgEclipseGenerator(EclipseGenerator):
     'org.metaborg.spoofax.eclipse.meta.m2e.feature.feature.group'
   ]
 
-  def __init__(self, workingDir, destination, config, spoofax=True, spoofaxRepo=None, spoofaxRepoLocal=False,
-      langDev=True, lwbDev=True, moreRepos=None, moreIUs=None, archive=False):
+  def __init__(self, workingDir, destination, spoofax=True, spoofaxRepo=None, spoofaxRepoLocal=False,
+      langDev=True, lwbDev=True, moreRepos=None, moreIUs=None):
     if spoofaxRepoLocal:
       spoofaxRepo = MetaborgEclipseGenerator.spoofaxRepoLocal
     elif not spoofaxRepo:
@@ -123,4 +123,17 @@ class MetaborgEclipseGenerator(EclipseGenerator):
     repos.extend(moreRepos)
     ius.extend(moreIUs)
 
-    EclipseGenerator.__init__(self, workingDir, destination, config, repos, ius, archive)
+    self.workingDir = workingDir
+    self.destination = destination
+    self.repos = repos
+    self.ius = ius
+
+  def generate(self, **kwargs):
+    generator = EclipseGenerator(self.workingDir, self.destination, repositories=self.repos, installUnits=self.ius,
+      **kwargs)
+    return generator.generate()
+
+  def generate_all(self, **kwargs):
+    generator = EclipseMultiGenerator(self.workingDir, self.destination, repositories=self.repos, installUnits=self.ius,
+      **kwargs)
+    return generator.generate()

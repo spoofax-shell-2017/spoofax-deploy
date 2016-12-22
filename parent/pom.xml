@@ -7,7 +7,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.metaborg</groupId>
   <artifactId>parent</artifactId>
-  <version>2.0.0</version>
+  <version>2.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Maven parent POM for all projects</description>
@@ -16,16 +16,13 @@
   <properties>
     <forceContextQualifier>qualifier</forceContextQualifier>
 
-    <metaborg-version>2.0.0</metaborg-version>
+    <metaborg-version>2.1.0-SNAPSHOT</metaborg-version>
     <metaborg-baseline-version>2.0.0-baseline-20160405-142357</metaborg-baseline-version>
     <metaborg-meta-lang-scope>provided</metaborg-meta-lang-scope>
 
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <java-version>1.7</java-version>
-
-    <deployFileUrl>${project.distributionManagement.snapshotRepository.url}</deployFileUrl>
-    <deployRepositoryId>metaborg-nexus</deployRepositoryId>
   </properties>
 
   <repositories>
@@ -147,7 +144,7 @@
       <dependency>
         <groupId>com.virtlink.commons</groupId>
         <artifactId>commons-configuration2-jackson</artifactId>
-        <version>0.6.0</version>
+        <version>0.6.1</version>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
@@ -179,22 +176,57 @@
       <dependency>
         <groupId>build.pluto</groupId>
         <artifactId>pluto</artifactId>
-        <version>1.9.1</version>
+        <version>1.10.0</version>
       </dependency>
       <dependency>
         <groupId>build.pluto</groupId>
         <artifactId>build-java</artifactId>
-        <version>1.5.1</version>
+        <version>1.6.0</version>
       </dependency>
       <dependency>
         <groupId>org.sugarj</groupId>
         <artifactId>common</artifactId>
-        <version>1.7.0</version>
+        <version>1.7.1</version>
       </dependency>
       <dependency>
         <groupId>com.cedarsoftware</groupId>
         <artifactId>java-util-pluto-fixes</artifactId>
         <version>1.19.4</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jetbrains.xodus</groupId>
+        <artifactId>xodus-environment</artifactId>
+        <version>1.0.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jetbrains.xodus</groupId>
+        <artifactId>xodus-compress</artifactId>
+        <version>1.0.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jetbrains.xodus</groupId>
+        <artifactId>xodus-openAPI</artifactId>
+        <version>1.0.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jetbrains.xodus</groupId>
+        <artifactId>xodus-utils</artifactId>
+        <version>1.0.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-compress</artifactId>
+        <version>1.8</version>
+      </dependency>
+      <dependency>
+        <groupId>org.tukaani</groupId>
+        <artifactId>xz</artifactId>
+        <version>1.5</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jetbrains</groupId>
+        <artifactId>annotations</artifactId>
+        <version>13.0</version>
       </dependency>
       <dependency>
         <groupId>org.objenesis</groupId>
@@ -490,28 +522,25 @@
                 </pluginExecution>
                 <pluginExecution>
                   <pluginExecutionFilter>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-clean-plugin</artifactId>
-                    <versionRange>[2.5,)</versionRange>
-                    <goals>
-                      <goal>clean</goal>
-                    </goals>
-                  </pluginExecutionFilter>
-                  <action>
-                    <ignore></ignore>
-                  </action>
-                </pluginExecution>
-                <pluginExecution>
-                  <pluginExecutionFilter>
                     <groupId>org.metaborg</groupId>
                     <artifactId>spoofax-maven-plugin</artifactId>
-                    <versionRange>[2.0.0,)</versionRange>
+                    <versionRange>[2.1.0-SNAPSHOT,)</versionRange>
                     <goals>
+                      <!-- Language specification -->
                       <goal>clean</goal>
                       <goal>initialize</goal>
                       <goal>generate-sources</goal>
                       <goal>compile</goal>
                       <goal>package</goal>
+                      <goal>verify</goal>
+                      <!-- Language project -->
+                      <goal>project-generate-sources</goal>
+                      <goal>project-clean</goal>
+                      <!-- Language test -->
+                      <goal>test</goal>
+                      <!-- Manual goals -->
+                      <goal>generate</goal>
+                      <goal>generate-eclipse</goal>
                       <goal>run</goal>
                     </goals>
                   </pluginExecutionFilter>
@@ -538,9 +567,6 @@
   <profiles>
     <profile>
       <id>release</id>
-      <properties>
-        <deployFileUrl>${project.distributionManagement.repository.url}</deployFileUrl>
-      </properties>
       <build>
         <plugins>
           <plugin>
@@ -581,17 +607,6 @@
     <developerConnection>scm:git:git@github.com:metaborg/spoofax-deploy.git</developerConnection>
     <url>https://github.com/metaborg/spoofax-deploy</url>
   </scm>
-
-  <distributionManagement>
-    <snapshotRepository>
-      <id>${deployRepositoryId}</id>
-      <url>http://artifacts.metaborg.org/content/repositories/snapshots/</url>
-    </snapshotRepository>
-    <repository>
-      <id>${deployRepositoryId}</id>
-      <url>http://artifacts.metaborg.org/content/repositories/releases/</url>
-    </repository>
-  </distributionManagement>
 
   <licenses>
     <license>

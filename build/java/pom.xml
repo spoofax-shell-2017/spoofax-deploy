@@ -13,7 +13,7 @@
   <parent>
     <groupId>org.metaborg</groupId>
     <artifactId>parent</artifactId>
-    <version>2.0.0</version>
+    <version>2.1.0-SNAPSHOT</version>
     <relativePath>../../parent</relativePath>
   </parent>
 
@@ -28,6 +28,7 @@
     <module>${repo.root}/mb-rep/org.spoofax.terms.typesmart</module>
     <module>${repo.root}/mb-rep/org.spoofax.interpreter.library.index</module>
     <module>${repo.root}/mb-rep/org.metaborg.scopegraph</module>
+    <module>${repo.root}/mb-rep/org.metaborg.scalaterms</module>
 
     <!-- Execution -->
     <module>${repo.root}/mb-exec/org.metaborg.util</module>
@@ -52,6 +53,10 @@
 
     <!-- StrategoXT -->
     <module>${repo.root}/strategoxt/strategoxt/stratego-libraries/java-backend</module>
+
+    <!-- SPT -->
+    <module>${repo.root}/spt/org.metaborg.mbt.core</module>
+    <module>${repo.root}/spt/org.metaborg.spt.core</module>
 
     <!-- Spoofax Maven Plugin -->
     <module>${repo.root}/spoofax-maven/spoofax-maven-plugin</module>
