@@ -146,6 +146,10 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, dryRun=False, commit=Fal
       os.path.join(baseDir, 'spoofax-intellij', 'org.metaborg.spoofax-common', 'src', 'main', 'resources'), '.txt'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
+  print('Setting versions in IntelliJ updatePlugins.xml files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
+  for file in FindFiles(os.path.join(baseDir, 'spoofax-intellij', 'repository'), 'updatePlugins.xml'):
+    ReplaceInFile(file, oldMavenVersion, newMavenVersion)
+
   # Commit changed files
   if commit:
     print('Committing changed files')
