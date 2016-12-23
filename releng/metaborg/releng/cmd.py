@@ -510,7 +510,7 @@ class MetaborgBuildShared(cli.Application):
   def make_builder(self, repo, buildProps, buildDeps=True, versionOverride=None):
     builder = RelengBuilder(repo, buildDeps=buildDeps)
 
-    version = buildProps.get('version', versionOverride or self.buildVersion)
+    version = versionOverride or buildProps.get('version', self.buildVersion)
     if version:
       versionIsSnapshot = 'SNAPSHOT' in version
     else:
