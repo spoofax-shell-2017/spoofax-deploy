@@ -76,7 +76,7 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, dryRun=False, commit=Fal
 
   # Java property file versions
   print('Setting versions in Java property files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
-  for file in FindFiles(baseDir, '*.properties'):
+  for file in FindFiles(baseDir, '.properties'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
   # Maven versions
@@ -135,16 +135,6 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, dryRun=False, commit=Fal
     ReplaceInFile(file, oldEclipseVersion, newEclipseVersion)
 
   # IntelliJ versions
-  '''
-  Special handling of MetaborgApplicationConfigState Java class. Need to set the meta-language versions to the
-  Maven version.
-  '''
-  print(
-    'Setting version in MetaborgApplicationConfigState Java class; {} -> {}'.format(oldMavenVersion, newMavenVersion))
-  ReplaceInFile(
-    os.path.join(baseDir, 'spoofax-intellij', 'org.metaborg.spoofax-common', 'src', 'main', 'java', 'org', 'metaborg',
-      'intellij', 'configuration', 'MetaborgApplicationConfigState.java'), oldMavenVersion, newMavenVersion)
-
   print('Setting versions in IntelliJ plugin.xml files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
   for file in FindFiles(
       os.path.join(baseDir, 'spoofax-intellij', 'org.metaborg.intellij', 'src', 'main', 'resources', 'META-INF'),
@@ -153,7 +143,11 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, dryRun=False, commit=Fal
 
   print('Setting versions in IntelliJ text files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
   for file in FindFiles(
-      os.path.join(baseDir, 'spoofax-intellij', 'org.metaborg.intellij', 'src', 'main', 'resources'), '*.txt'):
+      os.path.join(baseDir, 'spoofax-intellij', 'org.metaborg.spoofax-common', 'src', 'main', 'resources'), '.txt'):
+    ReplaceInFile(file, oldMavenVersion, newMavenVersion)
+
+  print('Setting versions in IntelliJ updatePlugins.xml files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
+  for file in FindFiles(os.path.join(baseDir, 'spoofax-intellij', 'repository'), 'updatePlugins.xml'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
   # Commit changed files
