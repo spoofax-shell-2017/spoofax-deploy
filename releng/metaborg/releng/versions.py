@@ -15,7 +15,7 @@ def ToEclipseVersion(mavenVersion):
   return version.replace('SNAPSHOT', 'qualifier')
 
 
-def SetVersions(repo, oldMavenVersion, newMavenVersion, setEclipseVersions=True, dryRun=False, commit=False):
+def SetVersions(repo, oldMavenVersion, newMavenVersion, dryRun=False, commit=False):
   baseDir = repo.working_tree_dir
   ignoreDirs = ['eclipse-installations', 'target', '_attic']
 
@@ -73,27 +73,13 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, setEclipseVersions=True,
       text = fileHandle.read()
     return 'Bnd-LastModified' in text
 
-  '''
-  Special handling for org.metaborg.spoofax.eclipse.updatesite project. Need to set the version in the pom file to the
-  Eclipse version instead of the Maven version, otherwise Tycho will fail the build.
-  '''
-  if setEclipseVersions:
-    print('Setting version in org.metaborg.spoofax.eclipse.updatesite POM file; {} -> {}'.format(oldEclipseVersion,
-      newEclipseVersion))
-    ReplaceInFile(os.path.join(baseDir, 'spoofax-eclipse', 'org.metaborg.spoofax.eclipse.updatesite', 'pom.xml'),
-      oldEclipseVersion, newEclipseVersion)
 
-  '''
-  Special handling of org.metaborg.core.MetaborgConstants Java class. Need to set the METABORG_VERSION constant to the
-  Maven version.
-  '''
-  print('Setting version in MetaborgConstants Java class; {} -> {}'.format(oldMavenVersion, newMavenVersion))
-  ReplaceInFile(os.path.join(baseDir, 'spoofax', 'org.metaborg.core', 'src', 'main', 'java', 'org', 'metaborg', 'core',
-    'MetaborgConstants.java'), oldMavenVersion, newMavenVersion)
+  # Java property file versions
+  print('Setting versions in Java property files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
+  for file in FindFiles(baseDir, '.properties'):
+    ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
-  '''
-  Generic handling of all other files
-  '''
+  # Maven versions
   print('Setting versions in Maven POM files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
   for file in FindFiles(baseDir, 'pom.xml'):
     if IsMavenPomFile(file):
@@ -103,6 +89,7 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, setEclipseVersions=True,
   for file in FindFiles(baseDir, 'extensions.xml'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
+  # Gradle versions
   print('Setting versions in Gradle build files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
   for file in FindFiles(baseDir, 'build.gradle'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
@@ -111,24 +98,59 @@ def SetVersions(repo, oldMavenVersion, newMavenVersion, setEclipseVersions=True,
   for file in FindFiles(baseDir, 'settings.gradle'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
-  print('Setting versions in MetaBorg files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
+  # Spoofax Core versions
+  '''
+  Special handling of org.metaborg.core.MetaborgConstants Java class. Need to set the METABORG_VERSION constant to the
+  Maven version.
+  '''
+  print('Setting version in MetaborgConstants Java class; {} -> {}'.format(oldMavenVersion, newMavenVersion))
+  ReplaceInFile(os.path.join(baseDir, 'spoofax', 'org.metaborg.core', 'src', 'main', 'java', 'org', 'metaborg', 'core',
+    'MetaborgConstants.java'), oldMavenVersion, newMavenVersion)
+
+  print('Setting versions in metaborg.yaml files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
   for file in FindFiles(baseDir, 'metaborg.yaml'):
     ReplaceInFile(file, oldMavenVersion, newMavenVersion)
 
-  if setEclipseVersions:
-    print('Setting versions in MANIFEST.MF files; {} -> {}'.format(oldEclipseVersion, newEclipseVersion))
-    for file in FindFiles(baseDir, 'MANIFEST.MF'):
-      if not IsGeneratedManifestFile(file):
-        ReplaceInFile(file, oldEclipseVersion, newEclipseVersion)
+  # Eclipse version
+  '''
+  Special handling for org.metaborg.spoofax.eclipse.updatesite project. Need to set the version in the pom file to the
+  Eclipse version instead of the Maven version, otherwise Tycho will fail the build.
+  '''
+  print('Setting version in org.metaborg.spoofax.eclipse.updatesite POM file; {} -> {}'.format(oldEclipseVersion,
+    newEclipseVersion))
+  ReplaceInFile(os.path.join(baseDir, 'spoofax-eclipse', 'org.metaborg.spoofax.eclipse.updatesite', 'pom.xml'),
+    oldEclipseVersion, newEclipseVersion)
 
-    print('Setting versions in feature.xml files; {} -> {}'.format(oldEclipseVersion, newEclipseVersion))
-    for file in FindFiles(baseDir, 'feature.xml'):
+  print('Setting versions in MANIFEST.MF files; {} -> {}'.format(oldEclipseVersion, newEclipseVersion))
+  for file in FindFiles(baseDir, 'MANIFEST.MF'):
+    if not IsGeneratedManifestFile(file):
       ReplaceInFile(file, oldEclipseVersion, newEclipseVersion)
 
-    print('Setting versions in site.xml files; {} -> {}'.format(oldEclipseVersion, newEclipseVersion))
-    for file in FindFiles(baseDir, 'site.xml'):
-      ReplaceInFile(file, oldEclipseVersion, newEclipseVersion)
+  print('Setting versions in feature.xml files; {} -> {}'.format(oldEclipseVersion, newEclipseVersion))
+  for file in FindFiles(baseDir, 'feature.xml'):
+    ReplaceInFile(file, oldEclipseVersion, newEclipseVersion)
 
+  print('Setting versions in site.xml files; {} -> {}'.format(oldEclipseVersion, newEclipseVersion))
+  for file in FindFiles(baseDir, 'site.xml'):
+    ReplaceInFile(file, oldEclipseVersion, newEclipseVersion)
+
+  # IntelliJ versions
+  print('Setting versions in IntelliJ plugin.xml files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
+  for file in FindFiles(
+      os.path.join(baseDir, 'spoofax-intellij', 'org.metaborg.intellij', 'src', 'main', 'resources', 'META-INF'),
+      'plugin.xml'):
+    ReplaceInFile(file, oldMavenVersion, newMavenVersion)
+
+  print('Setting versions in IntelliJ text files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
+  for file in FindFiles(
+      os.path.join(baseDir, 'spoofax-intellij', 'org.metaborg.spoofax-common', 'src', 'main', 'resources'), '.txt'):
+    ReplaceInFile(file, oldMavenVersion, newMavenVersion)
+
+  print('Setting versions in IntelliJ updatePlugins.xml files; {} -> {}'.format(oldMavenVersion, newMavenVersion))
+  for file in FindFiles(os.path.join(baseDir, 'spoofax-intellij', 'repository'), 'updatePlugins.xml'):
+    ReplaceInFile(file, oldMavenVersion, newMavenVersion)
+
+  # Commit changed files
   if commit:
     print('Committing changed files')
     for submodule in repo.submodules:

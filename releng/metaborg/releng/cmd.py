@@ -331,7 +331,7 @@ class MetaborgRelengSetVersions(cli.Application):
         print('WARNING: This will CHANGE pom.xml, MANIFEST.MF, and feature.xml files, do you want to continue?')
         if not YesNo():
           return 1
-    SetVersions(self.parent.repo, self.fromVersion, self.toVersion, True, self.dryRun, self.commit)
+    SetVersions(self.parent.repo, self.fromVersion, self.toVersion, self.dryRun, self.commit)
     return 0
 
 
@@ -510,7 +510,7 @@ class MetaborgBuildShared(cli.Application):
   def make_builder(self, repo, buildProps, buildDeps=True, versionOverride=None):
     builder = RelengBuilder(repo, buildDeps=buildDeps)
 
-    version = buildProps.get('version', versionOverride or self.buildVersion)
+    version = versionOverride or buildProps.get('version', self.buildVersion)
     if version:
       versionIsSnapshot = 'SNAPSHOT' in version
     else:
@@ -698,6 +698,16 @@ class MetaborgRelengRelease(MetaborgBuildShared):
     help='Reverts the release process, undoing any changes to the release and development branches',
     group='Release'
   )
+  dryRun = cli.Flag(
+    names=['--dry-run'], default=False,
+    help='Perform a dry run, skipping steps that push commits',
+    group='Release'
+  )
+  noEclipseInstances = cli.Flag(
+    names=['--no-eclipse-instances'], default=False,
+    help='Skip creating Eclipse instances',
+    group='Release'
+  )
 
   def main(self, releaseBranch, nextReleaseVersion, developBranch, curDevelopVersion):
     """
@@ -726,6 +736,8 @@ class MetaborgRelengRelease(MetaborgBuildShared):
 
     release.nextDevelopVersion = self.nextDevelopVersion
     release.interactive = not self.nonInteractive
+    release.dryRun = self.dryRun
+    release.createEclipseInstances = not self.noEclipseInstances
 
     if self.revertRelease:
       print(
@@ -744,9 +756,6 @@ class MetaborgRelengRelease(MetaborgBuildShared):
       return 0
     if builder.mavenDeployer.snapshot:
       print('Cannot release Maven snapshots')
-      return 0
-    if not builder.bintrayDeployer:
-      print('No Bintray deployment arguments were set')
       return 0
 
     print('Performing release')
