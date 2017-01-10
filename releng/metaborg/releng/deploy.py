@@ -71,7 +71,7 @@ class MetaborgNexusDeployer(object):
     self.nexus = Nexus(url, username, password)
 
   def artifact_remote_deploy(self, artifact):
-    if not artifact.nexusMetadata:
+    if not hasattr(artifact, 'nexusMetadata'):
       print("Skipping deployment of artifact '{}' to Nexus: no Nexus metadata was set".format(artifact.name))
       return
     metadata = artifact.nexusMetadata
@@ -92,7 +92,7 @@ class MetaborgBintrayDeployer(object):
     self.bintray = Bintray(username, key)
 
   def artifact_remote_deploy(self, artifact):
-    if not artifact.bintrayMetadata:
+    if not hasattr(artifact, 'bintrayMetadata'):
       print("Skipping deployment of artifact '{}' to Bintray: no Bintray metadata was set".format(artifact.name))
       return
     self.bintray.upload_generic(self.organization, self.repository, artifact.bintrayMetadata.package, self.version,
