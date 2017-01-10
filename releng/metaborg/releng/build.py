@@ -360,7 +360,7 @@ class RelengBuilder(object):
     generator = MetaborgEclipseGenerator(basedir, eclipsegenPath, spoofax=True, spoofaxRepoLocal=True,
       moreRepos=eclipseGenMoreRepos, moreIUs=eclipseGenMoreIUs)
     archives = generator.generate_all(oss=Os.values(), archs=Arch.values(), fixIni=True, addJre=True,
-      archiveJreSeparately=True, archivePrefix='spoofax')
+      archiveJreSeparately=True, name='spoofax', archivePrefix='spoofax')
 
     artifacts = []
     for archive in archives:
