@@ -360,17 +360,19 @@ class RelengBuilder(object):
     generator = MetaborgEclipseGenerator(basedir, eclipsegenPath, spoofax=True, spoofaxRepoLocal=True,
       moreRepos=eclipseGenMoreRepos, moreIUs=eclipseGenMoreIUs)
     archives = generator.generate_all(oss=Os.values(), archs=Arch.values(), fixIni=True, addJre=True,
-      archiveJreSeparately=True, archivePrefix='spoofax')
+      archiveJreSeparately=True, name='spoofax', archivePrefix='spoofax')
 
     artifacts = []
     for archive in archives:
       location = archive.location
       target = os.path.join('spoofax', 'eclipse', os.path.basename(location))
+      packaging = 'zip' if archive.os.archiveFormat == 'zip' else 'tar.gz'
+      classifier = '{}-{}{}'.format(archive.os.name, archive.arch.name, '-jre' if archive.withJre else '')
       artifacts.append(MetaborgFileArtifact(
         'Spoofax Eclipse instance',
         location,
         target,
-        NexusMetadata('org.metaborg', 'org.metaborg.spoofax.eclipse.dist'),
+        NexusMetadata('org.metaborg', 'org.metaborg.spoofax.eclipse.dist', packaging, classifier),
       ))
     return StepResult(artifacts)
 
