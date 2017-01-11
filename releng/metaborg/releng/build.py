@@ -367,7 +367,7 @@ class RelengBuilder(object):
       location = archive.location
       target = os.path.join('spoofax', 'eclipse', os.path.basename(location))
       packaging = 'zip' if archive.os.archiveFormat == 'zip' else 'tar.gz'
-      classifier = '{}-{}{}'.format(archive.os.name, archive.arch.name, 'jre' if archive.withJre else '')
+      classifier = '{}-{}{}'.format(archive.os.name, archive.arch.name, '-jre' if archive.withJre else '')
       artifacts.append(MetaborgFileArtifact(
         'Spoofax Eclipse instance',
         location,
