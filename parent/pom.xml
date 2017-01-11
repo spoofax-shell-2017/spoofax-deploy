@@ -22,7 +22,7 @@
 
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-    <java-version>1.7</java-version>
+    <java-version>1.8</java-version>
   </properties>
 
   <repositories>
@@ -272,6 +272,11 @@
         <artifactId>fastutil</artifactId>
         <version>7.0.12</version>
       </dependency>
+      <dependency>
+        <groupId>org.pcollections</groupId>
+        <artifactId>pcollections</artifactId>
+        <version>2.1.2</version>
+      </dependency>
 
       <!-- Annotations -->
       <dependency>
@@ -310,7 +315,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.5</version>
+          <version>3.5.1</version>
           <dependencies>
             <dependency>
               <groupId>org.codehaus.plexus</groupId>
@@ -469,6 +474,30 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-enforcer-plugin</artifactId>
           <version>1.4.1</version>
+        </plugin>
+        <!-- Annotation processing plugin -->
+        <plugin>
+          <groupId>org.bsc.maven</groupId>
+          <artifactId>maven-processor-plugin</artifactId>
+          <version>3.2.0</version>
+          <configuration>
+          </configuration>
+          <executions>
+            <execution>
+              <id>process</id>
+              <goals>
+                <goal>process</goal>
+              </goals>
+              <phase>generate-sources</phase>
+            </execution>
+            <execution>
+              <id>process-test</id>
+              <goals>
+                <goal>process-test</goal>
+              </goals>
+              <phase>generate-test-sources</phase>
+            </execution>
+          </executions>
         </plugin>
 
         <!-- OSGI bundle plugin -->

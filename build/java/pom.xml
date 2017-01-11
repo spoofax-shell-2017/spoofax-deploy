@@ -27,9 +27,8 @@
     <module>${repo.root}/mb-rep/org.spoofax.terms</module>
     <module>${repo.root}/mb-rep/org.spoofax.terms.typesmart</module>
     <module>${repo.root}/mb-rep/org.spoofax.interpreter.library.index</module>
-    <module>${repo.root}/mb-rep/org.metaborg.scopegraph</module>
     <module>${repo.root}/mb-rep/org.metaborg.scalaterms</module>
-
+    
     <!-- Execution -->
     <module>${repo.root}/mb-exec/org.metaborg.util</module>
     <module>${repo.root}/mb-exec/org.spoofax.interpreter.core</module>
@@ -50,6 +49,9 @@
     <module>${repo.root}/sdf/sdf2table.cmd</module>
     <module>${repo.root}/jsglr/org.spoofax.jsglr</module>
     <module>${repo.root}/jsglr/org.spoofax.interpreter.library.jsglr</module>
+
+    <!-- NaBL -->
+    <module>${repo.root}/nabl/org.metaborg.meta.nabl2.java</module>
 
     <!-- StrategoXT -->
     <module>${repo.root}/strategoxt/strategoxt/stratego-libraries/java-backend</module>
