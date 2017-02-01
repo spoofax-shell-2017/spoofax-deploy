@@ -325,6 +325,7 @@
           </dependencies>
           <configuration>
             <compilerId>eclipse</compilerId>
+            <compilerVersion>${java-version}</compilerVersion>
             <source>${java-version}</source>
             <target>${java-version}</target>
             <debug>true</debug>
