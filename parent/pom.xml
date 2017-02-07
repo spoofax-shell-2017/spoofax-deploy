@@ -621,6 +621,39 @@
         </plugins>
       </build>
     </profile>
+    <profile>
+      <id>windows-null</id>
+      <activation>
+        <os>
+          <family>windows</family>
+        </os>
+      </activation>
+      <properties>
+        <null-device>NUL</null-device>
+      </properties>
+    </profile>
+    <profile>
+      <id>unix-null</id>
+      <activation>
+        <os>
+          <family>unix</family>
+        </os>
+      </activation>
+      <properties>
+        <null-device>/dev/null</null-device>
+      </properties>
+    </profile>
+    <profile>
+      <id>mac-null</id>
+      <activation>
+        <os>
+          <family>mac</family>
+        </os>
+      </activation>
+      <properties>
+        <null-device>/dev/null</null-device>
+      </properties>
+    </profile>
   </profiles>
 
   <developers>
