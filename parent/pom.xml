@@ -17,7 +17,7 @@
     <forceContextQualifier>qualifier</forceContextQualifier>
 
     <metaborg-version>2.2.0-SNAPSHOT</metaborg-version>
-    <metaborg-baseline-version>2.0.0-baseline-20160405-142357</metaborg-baseline-version>
+    <metaborg-baseline-version>2.1.0</metaborg-baseline-version>
     <metaborg-meta-lang-scope>provided</metaborg-meta-lang-scope>
 
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -325,6 +325,7 @@
           </dependencies>
           <configuration>
             <compilerId>eclipse</compilerId>
+            <compilerVersion>${java-version}</compilerVersion>
             <source>${java-version}</source>
             <target>${java-version}</target>
             <debug>true</debug>
@@ -619,6 +620,39 @@
           </plugin>
         </plugins>
       </build>
+    </profile>
+    <profile>
+      <id>windows-null</id>
+      <activation>
+        <os>
+          <family>windows</family>
+        </os>
+      </activation>
+      <properties>
+        <null-device>NUL</null-device>
+      </properties>
+    </profile>
+    <profile>
+      <id>unix-null</id>
+      <activation>
+        <os>
+          <family>unix</family>
+        </os>
+      </activation>
+      <properties>
+        <null-device>/dev/null</null-device>
+      </properties>
+    </profile>
+    <profile>
+      <id>mac-null</id>
+      <activation>
+        <os>
+          <family>mac</family>
+        </os>
+      </activation>
+      <properties>
+        <null-device>/dev/null</null-device>
+      </properties>
     </profile>
   </profiles>
 
