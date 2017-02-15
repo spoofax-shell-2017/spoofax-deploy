@@ -235,6 +235,18 @@
         <!-- Version 2.2 for build.pluto:pluto -->
       </dependency>
 
+      <!-- Command-line parsing and running -->
+      <dependency>
+        <groupId>com.beust</groupId>
+        <artifactId>jcommander</artifactId>
+        <version>1.60</version>
+      </dependency>
+      <dependency>
+        <groupId>com.martiansoftware</groupId>
+        <artifactId>nailgun-server</artifactId>
+        <version>0.9.1</version>
+      </dependency>
+
       <!-- Support libraries -->
       <dependency>
         <groupId>com.google.guava</groupId>
