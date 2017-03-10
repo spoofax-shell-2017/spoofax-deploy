@@ -342,9 +342,10 @@ class RelengBuilder(object):
     maven.run_in_dir(cwd, target, forceContextQualifier=eclipseQualifier)
 
   @staticmethod
-  def __build_eclipse(basedir, eclipseQualifier, maven, **_):
+  def __build_eclipse(basedir, eclipseQualifier, maven, mavenDeployer, **_):
+    target = 'deploy' if mavenDeployer else 'install'
     cwd = os.path.join(basedir, 'releng', 'build', 'eclipse')
-    maven.run_in_dir(cwd, 'install', forceContextQualifier=eclipseQualifier)
+    maven.run_in_dir(cwd, target, forceContextQualifier=eclipseQualifier)
     return StepResult([
       DirArtifact(
         'Spoofax Eclipse update site',
