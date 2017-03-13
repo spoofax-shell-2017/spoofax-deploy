@@ -18,7 +18,7 @@
   </parent>
 
   <properties>
-    <tycho-version>0.24.0</tycho-version>
+    <tycho-version>1.0.0</tycho-version>
     <test-workspace-location>${project.build.directory}/work</test-workspace-location>
   </properties>
 
