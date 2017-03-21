@@ -28,7 +28,6 @@
     <module>${repo.root}/nabl/org.metaborg.meta.nabl2.shared</module>
     <module>${repo.root}/nabl/org.metaborg.meta.nabl2.lang</module>
     <module>${repo.root}/nabl/org.metaborg.meta.nabl2.runtime</module>
-    <module>${repo.root}/nabl/org.metaborg.meta.nabl2.test</module>
     <module>${repo.root}/nabl/org.metaborg.meta.lang.nabl</module>
     <module>${repo.root}/spoofax/meta.lib.spoofax</module>
     <module>${repo.root}/runtime-libraries/org.metaborg.meta.lang.analysis</module>
