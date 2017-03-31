@@ -131,6 +131,22 @@
       <artifactId>org.metaborg.spt.core</artifactId>
       <version>${metaborg-version}</version>
     </dependency>
+    <!-- Shell -->
+    <dependency>
+      <groupId>org.metaborg</groupId>
+      <artifactId>org.metaborg.spoofax.shell.core</artifactId>
+      <version>${metaborg-version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.metaborg</groupId>
+      <artifactId>org.metaborg.spoofax.shell.eclipse</artifactId>
+      <version>${metaborg-version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.metaborg</groupId>
+      <artifactId>org.metaborg.spoofax.shell.eclipse.externaldeps</artifactId>
+      <version>${metaborg-version}</version>
+    </dependency>
     <!-- External dependencies -->
     <dependency>
       <groupId>org.metaborg</groupId>
