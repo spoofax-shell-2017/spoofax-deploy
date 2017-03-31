@@ -139,11 +139,6 @@
     </dependency>
     <dependency>
       <groupId>org.metaborg</groupId>
-      <artifactId>org.metaborg.spoofax.shell.eclipse</artifactId>
-      <version>${metaborg-version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.metaborg</groupId>
       <artifactId>org.metaborg.spoofax.shell.eclipse.externaldeps</artifactId>
       <version>${metaborg-version}</version>
     </dependency>
