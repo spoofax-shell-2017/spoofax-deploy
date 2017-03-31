@@ -28,6 +28,7 @@
     <module>${submodule.root}/parent/eclipse/language/meta</module>
     <module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.externaldeps</module>
     <module>${repo.root}/spoofax-eclipse/org.metaborg.spoofax.eclipse.meta.externaldeps</module>
+    <module>${repo.root}/spoofax-shell/org.metaborg.spoofax.shell.eclipse.externaldeps</module>
   </modules>
 
   <developers>

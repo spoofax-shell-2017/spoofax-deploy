@@ -68,6 +68,10 @@
     <!-- Spoofax Sunshine -->
     <module>${repo.root}/spoofax-sunshine/org.metaborg.sunshine2</module>
     <module>${repo.root}/spoofax-sunshine/spoofax.core.cmd</module>
+    
+    <!-- Spoofax Shell -->
+    <module>${repo.root}/spoofax-shell/org.metaborg.spoofax.shell.core</module>
+    <module>${repo.root}/spoofax-shell/org.metaborg.spoofax.shell.console</module>
   </modules>
 
   <developers>

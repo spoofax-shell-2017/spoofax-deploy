@@ -56,6 +56,9 @@
 
     <!-- SPT testrunner plugin -->
     <module>${repo.root}/spt/org.metaborg.spt.testrunner.eclipse</module>
+    
+    <!-- Spoofax Shell integration -->
+    <module>${repo.root}/spoofax-shell/org.metaborg.spoofax.shell.eclipse</module>
   </modules>
 
   <developers>
