@@ -276,6 +276,10 @@ class RelengBuilder(object):
         'Spoofax sunshine JAR',
         _glob_one(os.path.join(basedir, 'spoofax-sunshine/org.metaborg.sunshine2/target/org.metaborg.sunshine2-*.jar'))
       )
+    , FileArtifact(
+        'Spoofax REPL JAR',
+        _glob_one(os.path.join(basedir, 'spoofax-shell/org.metaborg.spoofax.shell.console/target/org.metaborg.spoofax.shell.console-*.jar'))
+      )
     ])
 
   @staticmethod
