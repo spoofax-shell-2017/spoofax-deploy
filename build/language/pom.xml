@@ -37,6 +37,7 @@
     <module>${repo.root}/stratego/org.metaborg.meta.lang.stratego</module>
     <module>${repo.root}/ts/org.metaborg.meta.lang.ts</module>
     <module>${repo.root}/metaborg-coq/org.metaborg.lang.coq</module>
+    <module>${repo.root}/flowspec/meta.flowspec.lang</module>
   </modules>
 
   <developers>

@@ -68,6 +68,9 @@
     <!-- Spoofax Sunshine -->
     <module>${repo.root}/spoofax-sunshine/org.metaborg.sunshine2</module>
     <module>${repo.root}/spoofax-sunshine/spoofax.core.cmd</module>
+
+    <!-- FlowSpec -->
+    <module>${repo.root}/flowspec/meta.flowspec.java</module>
   </modules>
 
   <developers>

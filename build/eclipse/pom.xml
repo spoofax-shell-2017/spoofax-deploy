@@ -53,6 +53,7 @@
     <module>${repo.root}/stratego/org.metaborg.meta.lang.stratego.eclipse</module>
     <module>${repo.root}/ts/org.metaborg.meta.lang.ts.eclipse</module>
     <module>${repo.root}/metaborg-coq/org.metaborg.lang.coq.eclipse</module>
+    <module>${repo.root}/flowspec/meta.flowspec.lang.eclipse</module>
 
     <!-- SPT testrunner plugin -->
     <module>${repo.root}/spt/org.metaborg.spt.testrunner.eclipse</module>
