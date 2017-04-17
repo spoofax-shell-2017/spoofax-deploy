@@ -7,7 +7,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.metaborg</groupId>
   <artifactId>parent</artifactId>
-  <version>2.1.0</version>
+  <version>2.2.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Maven parent POM for all projects</description>
@@ -16,13 +16,13 @@
   <properties>
     <forceContextQualifier>qualifier</forceContextQualifier>
 
-    <metaborg-version>2.1.0</metaborg-version>
-    <metaborg-baseline-version>2.0.0-baseline-20160405-142357</metaborg-baseline-version>
+    <metaborg-version>2.2.0-SNAPSHOT</metaborg-version>
+    <metaborg-baseline-version>2.1.0</metaborg-baseline-version>
     <metaborg-meta-lang-scope>provided</metaborg-meta-lang-scope>
 
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-    <java-version>1.7</java-version>
+    <java-version>1.8</java-version>
   </properties>
 
   <repositories>
@@ -176,12 +176,12 @@
       <dependency>
         <groupId>build.pluto</groupId>
         <artifactId>pluto</artifactId>
-        <version>1.10.0</version>
+        <version>1.11.0</version>
       </dependency>
       <dependency>
         <groupId>build.pluto</groupId>
         <artifactId>build-java</artifactId>
-        <version>1.6.0</version>
+        <version>1.7.0</version>
       </dependency>
       <dependency>
         <groupId>org.sugarj</groupId>
@@ -235,6 +235,18 @@
         <!-- Version 2.2 for build.pluto:pluto -->
       </dependency>
 
+      <!-- Command-line parsing and running -->
+      <dependency>
+        <groupId>com.beust</groupId>
+        <artifactId>jcommander</artifactId>
+        <version>1.60</version>
+      </dependency>
+      <dependency>
+        <groupId>com.martiansoftware</groupId>
+        <artifactId>nailgun-server</artifactId>
+        <version>0.9.1</version>
+      </dependency>
+
       <!-- Support libraries -->
       <dependency>
         <groupId>com.google.guava</groupId>
@@ -271,6 +283,11 @@
         <groupId>it.unimi.dsi</groupId>
         <artifactId>fastutil</artifactId>
         <version>7.0.12</version>
+      </dependency>
+      <dependency>
+        <groupId>org.pcollections</groupId>
+        <artifactId>pcollections</artifactId>
+        <version>2.1.2</version>
       </dependency>
 
       <!-- Annotations -->
@@ -310,16 +327,17 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.5</version>
+          <version>3.6.1</version>
           <dependencies>
             <dependency>
               <groupId>org.codehaus.plexus</groupId>
               <artifactId>plexus-compiler-eclipse</artifactId>
-              <version>2.7</version>
+              <version>2.8.1</version>
             </dependency>
           </dependencies>
           <configuration>
             <compilerId>eclipse</compilerId>
+            <compilerVersion>${java-version}</compilerVersion>
             <source>${java-version}</source>
             <target>${java-version}</target>
             <debug>true</debug>
@@ -470,6 +488,30 @@
           <artifactId>maven-enforcer-plugin</artifactId>
           <version>1.4.1</version>
         </plugin>
+        <!-- Annotation processing plugin -->
+        <plugin>
+          <groupId>org.bsc.maven</groupId>
+          <artifactId>maven-processor-plugin</artifactId>
+          <version>3.2.0</version>
+          <configuration>
+          </configuration>
+          <executions>
+            <execution>
+              <id>process</id>
+              <goals>
+                <goal>process</goal>
+              </goals>
+              <phase>generate-sources</phase>
+            </execution>
+            <execution>
+              <id>process-test</id>
+              <goals>
+                <goal>process-test</goal>
+              </goals>
+              <phase>generate-test-sources</phase>
+            </execution>
+          </executions>
+        </plugin>
 
         <!-- OSGI bundle plugin -->
         <plugin>
@@ -524,7 +566,7 @@
                   <pluginExecutionFilter>
                     <groupId>org.metaborg</groupId>
                     <artifactId>spoofax-maven-plugin</artifactId>
-                    <versionRange>[2.1.0,)</versionRange>
+                    <versionRange>[2.2.0-SNAPSHOT,)</versionRange>
                     <goals>
                       <!-- Language specification -->
                       <goal>clean</goal>
@@ -590,6 +632,39 @@
           </plugin>
         </plugins>
       </build>
+    </profile>
+    <profile>
+      <id>windows-null</id>
+      <activation>
+        <os>
+          <family>windows</family>
+        </os>
+      </activation>
+      <properties>
+        <null-device>NUL</null-device>
+      </properties>
+    </profile>
+    <profile>
+      <id>unix-null</id>
+      <activation>
+        <os>
+          <family>unix</family>
+        </os>
+      </activation>
+      <properties>
+        <null-device>/dev/null</null-device>
+      </properties>
+    </profile>
+    <profile>
+      <id>mac-null</id>
+      <activation>
+        <os>
+          <family>mac</family>
+        </os>
+      </activation>
+      <properties>
+        <null-device>/dev/null</null-device>
+      </properties>
     </profile>
   </profiles>
 
