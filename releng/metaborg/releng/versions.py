@@ -17,7 +17,7 @@ def ToEclipseVersion(mavenVersion):
 
 def SetVersions(repo, oldMavenVersion, newMavenVersion, dryRun=False, commit=False):
   baseDir = repo.working_tree_dir
-  ignoreDirs = ['eclipse-installations', 'target', '_attic']
+  ignoreDirs = ['eclipse-installations', 'target', '_attic', 'metaborg-sl']
 
   oldEclipseVersion = ToEclipseVersion(oldMavenVersion)
   newEclipseVersion = ToEclipseVersion(newMavenVersion)

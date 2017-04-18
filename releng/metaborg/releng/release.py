@@ -99,15 +99,14 @@ class MetaborgRelease(object):
           if not self.interactive:
             raise Exception('Error while in non-interactive mode, stopping')
 
-        # Fix .gitmodules file to point to the correct branches
-        print('Restoring .gitmodules file')
-        submoduleRelBranches = db['submoduleRelBranches']
+        # Restore changes that should not be merged
+        print('Restoring changes that should not be merged')
         try:
-          for key, value in submoduleRelBranches.items():
-            self.repo.git.config('-f', '.gitmodules', '--replace-all', 'submodule.{}.branch'.format(key), value)
-          self.repo.git.add('.gitmodules')
+          self.repo.git.checkout(self.developBranchName, '--', '.gitmodules')
+          self.repo.git.checkout(self.developBranchName, '--', 'build.properties')
+          self.repo.git.checkout(self.developBranchName, '--', 'jenkins.properties')
         except git.exc.GitCommandError as detail:
-          print('ERROR: restoring .gitmodules config failed')
+          print('ERROR: restoring changes that should not be merged failed')
           print(str(detail))
           if not self.interactive:
             raise Exception('Error while in non-interactive mode, stopping')
