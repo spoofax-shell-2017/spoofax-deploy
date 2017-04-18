@@ -8,6 +8,6 @@ jprops==1.0
 buildorchestra==0.1.4
 mavenpy==0.1.2
 gradlepy==0.1.2
-eclipsegen==0.2.1
+eclipsegen==0.2.2
 bintraypy==0.1.1
 nexuspy==0.1.0
