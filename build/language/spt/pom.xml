@@ -27,7 +27,7 @@
     <module>${repo.root}/spt/org.metaborg.meta.lang.spt</module>
     <module>${repo.root}/spt/org.metaborg.meta.lang.spt.interactive</module>
     <module>${repo.root}/spt/org.metaborg.lang.minisql</module>
-    <module>${repo.root}/nabl/org.metaborg.meta.nabl2.test</module>
+    <module>${repo.root}/nabl/meta.nabl2.test</module>
   </modules>
 
   <developers>

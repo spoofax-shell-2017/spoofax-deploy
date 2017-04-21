@@ -25,9 +25,11 @@
   <modules>
     <module>${repo.root}/esv/org.metaborg.meta.lang.esv</module>
     <module>${repo.root}/mb-rep/org.metaborg.meta.lang.aterm</module>
-    <module>${repo.root}/nabl/org.metaborg.meta.nabl2.shared</module>
-    <module>${repo.root}/nabl/org.metaborg.meta.nabl2.lang</module>
-    <module>${repo.root}/nabl/org.metaborg.meta.nabl2.runtime</module>
+    <module>${repo.root}/nabl/meta.nabl2.shared</module>
+    <module>${repo.root}/nabl/meta.nabl2.lang</module>
+    <module>${repo.root}/nabl/meta.nabl2.runtime</module>
+    <module>${repo.root}/nabl/meta.nabl2.integration.coq</module>
+    <module>${repo.root}/nabl/meta.nabl2.integration.dynsem</module>
     <module>${repo.root}/nabl/org.metaborg.meta.lang.nabl</module>
     <module>${repo.root}/spoofax/meta.lib.spoofax</module>
     <module>${repo.root}/runtime-libraries/org.metaborg.meta.lang.analysis</module>

@@ -40,9 +40,11 @@
     <module>${repo.root}/esv/org.metaborg.meta.lang.esv.eclipse</module>
     <module>${repo.root}/mb-rep/org.metaborg.meta.lang.aterm.eclipse</module>
     <module>${repo.root}/nabl/org.metaborg.meta.lang.nabl.eclipse</module>
-    <module>${repo.root}/nabl/org.metaborg.meta.nabl2.shared.eclipse</module>
-    <module>${repo.root}/nabl/org.metaborg.meta.nabl2.lang.eclipse</module>
-    <module>${repo.root}/nabl/org.metaborg.meta.nabl2.runtime.eclipse</module>
+    <module>${repo.root}/nabl/meta.nabl2.shared.eclipse</module>
+    <module>${repo.root}/nabl/meta.nabl2.lang.eclipse</module>
+    <module>${repo.root}/nabl/meta.nabl2.runtime.eclipse</module>
+    <module>${repo.root}/nabl/meta.nabl2.integration.coq.eclipse</module>
+    <module>${repo.root}/nabl/meta.nabl2.integration.dynsem.eclipse</module>
     <module>${repo.root}/spoofax/meta.lib.spoofax.eclipse</module>
     <module>${repo.root}/runtime-libraries/org.metaborg.meta.lang.analysis.eclipse</module>
     <module>${repo.root}/runtime-libraries/org.metaborg.meta.lib.analysis.eclipse</module>

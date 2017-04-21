@@ -52,7 +52,7 @@
     <module>${repo.root}/jsglr/org.spoofax.interpreter.library.jsglr</module>
 
     <!-- NaBL -->
-    <module>${repo.root}/nabl/org.metaborg.meta.nabl2.java</module>
+    <module>${repo.root}/nabl/meta.nabl2.java</module>
 
     <!-- StrategoXT -->
     <module>${repo.root}/strategoxt/strategoxt/stratego-libraries/java-backend</module>
