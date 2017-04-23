@@ -26,6 +26,7 @@
     <module>${repo.root}/dynsem/dynsem</module>
     <module>${repo.root}/dynsem/org.metaborg.meta.lang.dynsem.interpreter</module>
     <module>${repo.root}/dynsem/dynsem2coq</module>
+    <module>${repo.root}/nabl/meta.nabl2.integration.dynsem</module>
   </modules>
 
   <developers>

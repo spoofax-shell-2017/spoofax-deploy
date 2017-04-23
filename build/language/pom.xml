@@ -29,7 +29,6 @@
     <module>${repo.root}/nabl/meta.nabl2.lang</module>
     <module>${repo.root}/nabl/meta.nabl2.runtime</module>
     <module>${repo.root}/nabl/meta.nabl2.integration.coq</module>
-    <module>${repo.root}/nabl/meta.nabl2.integration.dynsem</module>
     <module>${repo.root}/nabl/org.metaborg.meta.lang.nabl</module>
     <module>${repo.root}/spoofax/meta.lib.spoofax</module>
     <module>${repo.root}/runtime-libraries/org.metaborg.meta.lang.analysis</module>
