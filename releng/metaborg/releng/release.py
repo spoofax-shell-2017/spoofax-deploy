@@ -102,9 +102,9 @@ class MetaborgRelease(object):
         # Restore changes that should not be merged
         print('Restoring changes that should not be merged')
         try:
-          self.repo.git.checkout(self.developBranchName, '--', '.gitmodules')
-          self.repo.git.checkout(self.developBranchName, '--', 'build.properties')
-          self.repo.git.checkout(self.developBranchName, '--', 'jenkins.properties')
+          self.repo.git.checkout(self.releaseBranchName, '--', '.gitmodules')
+          self.repo.git.checkout(self.releaseBranchName, '--', 'build.properties')
+          self.repo.git.checkout(self.releaseBranchName, '--', 'jenkins.properties')
         except git.exc.GitCommandError as detail:
           print('ERROR: restoring changes that should not be merged failed')
           print(str(detail))
