@@ -45,8 +45,6 @@
     <module>${repo.root}/spoofax/org.metaborg.spoofax.nativebundle</module>
 
     <!-- SDF -->
-    <module>${repo.root}/sdf/sdf2table.core</module>
-    <module>${repo.root}/sdf/sdf2table.cmd</module>
     <module>${repo.root}/sdf/org.metaborg.sdf2table</module>
     <module>${repo.root}/jsglr/org.spoofax.jsglr</module>
     <module>${repo.root}/jsglr/org.spoofax.interpreter.library.jsglr</module>

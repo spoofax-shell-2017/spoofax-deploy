@@ -52,8 +52,9 @@
               !org.junit,
               !javax*,
               !org.xml*,
-              org.spoofax*,
-              org.metaborg*,
+              org.spoofax.*,
+              org.metaborg.*,
+              mb.*,
               org.strategoxt.*,
               org.apache.tools.ant,
               *;provider=metaborg;mandatory:=provider;version=0

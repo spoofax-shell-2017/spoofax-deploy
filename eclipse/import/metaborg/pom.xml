@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+  xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+>
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>eclipse.import.metaborg</artifactId>
+  <packaging>pom</packaging>
+
+  <parent>
+    <groupId>org.metaborg</groupId>
+    <artifactId>parent</artifactId>
+    <version>2.3.0-SNAPSHOT</version>
+    <relativePath>../../parent</relativePath>
+  </parent>
+
+  <modules>
+    <module>../../../../mb-rep/org.spoofax.terms</module>
+    <module>../../../../mb-rep/org.spoofax.terms.typesmart</module>
+    <module>../../../../mb-rep/org.spoofax.interpreter.library.index</module>
+    <module>../../../../mb-exec/org.metaborg.util</module>
+    <module>../../../../mb-exec/org.spoofax.interpreter.core</module>
+    <module>../../../../mb-exec/org.spoofax.interpreter.library.java</module>
+    <module>../../../../mb-exec/org.spoofax.interpreter.library.xml</module>
+    <module>../../../../runtime-libraries/org.metaborg.runtime.task</module>
+    <module>../../../../jsglr/org.spoofax.interpreter.library.jsglr</module>
+    <module>../../../../jsglr/org.spoofax.jsglr</module>
+    <module>../../../../sdf/org.metaborg.sdf2table</module>
+    <module>../../../../nabl/org.metaborg.meta.nabl2.java</module>
+    <module>../../../../strategoxt/strategoxt/stratego-libraries/java-backend</module>
+  </modules>
+</project>
