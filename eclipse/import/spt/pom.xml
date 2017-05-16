@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+  xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+>
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>eclipse.import.spoofax.core</artifactId>
+  <packaging>pom</packaging>
+
+  <parent>
+    <groupId>org.metaborg</groupId>
+    <artifactId>parent</artifactId>
+    <version>2.3.0-SNAPSHOT</version>
+    <relativePath>../../parent</relativePath>
+  </parent>
+
+  <modules>
+    <module>../../../../spt/org.metaborg.mbt.core</module>
+    <module>../../../../spt/org.metaborg.meta.lang.spt</module>
+    <module>../../../../spt/org.metaborg.meta.lang.spt.eclipse</module>
+    <module>../../../../spt/org.metaborg.meta.lang.spt.interactive</module>
+    <module>../../../../spt/org.metaborg.meta.lang.spt.interactive.eclipse</module>
+    <module>../../../../spt/org.metaborg.spt.cmd</module>
+    <module>../../../../spt/org.metaborg.spt.core</module>
+    <module>../../../../spt/org.metaborg.spt.testrunner.eclipse</module>
+  </modules>
+</project>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+  xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+>
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>eclipse.import.meta.lang</artifactId>
+  <packaging>pom</packaging>
+
+  <parent>
+    <groupId>org.metaborg</groupId>
+    <artifactId>parent</artifactId>
+    <version>2.3.0-SNAPSHOT</version>
+    <relativePath>../../parent</relativePath>
+  </parent>
+
+  <modules>
+    <module>../../../../dynsem/dynsem</module>
+    <module>../../../../dynsem/dynsem2coq</module>
+    <module>../../../../spoofax/meta.lib.spoofax</module>
+    <module>../../../../esv/org.metaborg.meta.lang.esv</module>
+    <module>../../../../mb-rep/org.metaborg.meta.lang.aterm</module>
+    <module>../../../../nabl/org.metaborg.meta.lang.nabl</module>
+    <module>../../../../nabl/org.metaborg.meta.nabl2.shared</module>
+    <module>../../../../nabl/org.metaborg.meta.nabl2.lang</module>
+    <module>../../../../nabl/org.metaborg.meta.nabl2.runtime</module>
+    <module>../../../../runtime-libraries/org.metaborg.meta.lang.analysis</module>
+    <module>../../../../runtime-libraries/org.metaborg.meta.lib.analysis</module>
+    <module>../../../../sdf/org.metaborg.meta.lang.sdf</module>
+    <module>../../../../sdf/org.metaborg.meta.lang.template</module>
+    <module>../../../../spt/org.metaborg.meta.lang.spt</module>
+    <module>../../../../spt/org.metaborg.meta.lang.spt.interactive</module>
+    <module>../../../../stratego/org.metaborg.meta.lang.stratego</module>
+    <module>../../../../ts/org.metaborg.meta.lang.ts</module>
+    <module>../../../../metaborg-coq/org.metaborg.lang.coq</module>
+  </modules>
+</project>

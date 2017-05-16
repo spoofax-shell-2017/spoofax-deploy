@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+  xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+>
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>eclipse.import.pom</artifactId>
+  <packaging>pom</packaging>
+
+  <parent>
+    <groupId>org.metaborg</groupId>
+    <artifactId>parent</artifactId>
+    <version>2.3.0-SNAPSHOT</version>
+    <relativePath>../../parent</relativePath>
+  </parent>
+
+  <modules>
+    <module>../../../../releng/parent</module>
+    <module>../../../../releng/parent/java</module>
+    <module>../../../../releng/parent/language</module>
+    <module>../../../../releng/parent/eclipse/plugin</module>
+    <module>../../../../releng/parent/eclipse/language</module>
+    <module>../../../../releng/parent/eclipse/language/meta</module>
+    <module>../../../../releng/build/parent</module>
+    <module>../../../../releng/build/java</module>
+    <module>../../../../releng/build/libs</module>
+    <module>../../../../releng/build/language</module>
+    <module>../../../../releng/build/eclipse</module>
+    <module>../../../../spoofax/org.metaborg.spoofax.core.uber</module>
+  </modules>
+</project>
