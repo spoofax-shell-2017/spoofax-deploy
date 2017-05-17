@@ -139,9 +139,9 @@ class RelengBuilder(object):
     gradle.noNative = not self.gradleNative
     gradle.daemon = self.gradleDaemon
 
-    if self.mavenCleanLocalRepo:
+    # TODO: clean standard local repo (~/.m2/repository) when self.mavenLocalRepo is None
+    if self.mavenCleanLocalRepo and self.mavenLocalRepo:
       print(figlet.renderText('Cleaning local maven repository'))
-      # TODO: self.mavenLocalRepo can be None
       _clean_local_repo(self.mavenLocalRepo)
 
     print(figlet.renderText('Building'))
