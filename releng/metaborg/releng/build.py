@@ -77,6 +77,7 @@ class RelengBuilder(object):
     eclipse = add_main_target('eclipse', allLangDeps + [eclipsePrereqs], RelengBuilder.__build_eclipse)
 
     intellij = add_main_target('intellij', allLangDeps, RelengBuilder.__build_intellij)
+    spt_intellij = add_main_target('spt-intellij', [spt], RelengBuilder.__build_spt_intellij)
 
     builder.add_target('all', mainTargets)
 
@@ -390,6 +391,21 @@ class RelengBuilder(object):
         os.path.join('spoofax', 'intellij', 'plugin.zip'),
         NexusMetadata('org.metaborg', 'org.metaborg.intellij.dist'),
         BintrayMetadata('spoofax-intellij-updatesite')
+      ),
+    ])
+
+  @staticmethod
+  def __build_spt_intellij(basedir, gradle, **_):
+    target = 'install'
+    cwd = os.path.join(basedir, 'spt', 'org.metaborg.spt.testrunner.intellij')
+    gradle.run_in_dir(cwd, target)
+    return StepResult([
+      MetaborgFileArtifact(
+        'SPT test runner for IntelliJ',
+        _glob_one(os.path.join(basedir, cwd, 'build', 'distributions', 'org.metaborg.spt.testrunner.intellij-*.zip')),
+        os.path.join('spt', 'intellij', 'plugin.zip'),
+        NexusMetadata('org.metaborg', 'org.metaborg.spt.testrunner.intellij'),
+        BintrayMetadata('spt-intellij-updatesite')
       ),
     ])
 
