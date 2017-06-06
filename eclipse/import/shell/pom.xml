@@ -5,7 +5,7 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
 >
   <modelVersion>4.0.0</modelVersion>
-  <artifactId>eclipse.import</artifactId>
+  <artifactId>eclipse.import.shell</artifactId>
   <packaging>pom</packaging>
 
   <parent>
@@ -16,14 +16,9 @@
   </parent>
 
   <modules>
-    <module>pom</module>
-    <module>metaborg</module>
-    <module>spoofax-core</module>
-    <module>shell</module>
-    <module>tools</module>
-    <module>meta-lang</module>
-    <module>eclipse</module>
-    <module>meta-lang-eclipse</module>
-    <module>spt</module>
+    <module>../../../../spoofax-shell/org.metaborg.spoofax.shell.console</module>
+    <module>../../../../spoofax-shell/org.metaborg.spoofax.shell.core</module>
+    <module>../../../../spoofax-shell/org.metaborg.spoofax.shell.eclipse</module>
+    <module>../../../../spoofax-shell/org.metaborg.spoofax.shell.eclipse.externaldeps</module>
   </modules>
 </project>
