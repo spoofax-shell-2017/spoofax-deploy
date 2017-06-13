@@ -55,6 +55,9 @@
     <!-- StrategoXT -->
     <module>${repo.root}/strategoxt/strategoxt/stratego-libraries/java-backend</module>
 
+    <!-- DynSem -->
+    <module>${repo.root}/dynsem/org.metaborg.meta.interpreter.framework</module>
+
     <!-- SPT -->
     <module>${repo.root}/spt/org.metaborg.mbt.core</module>
     <module>${repo.root}/spt/org.metaborg.spt.core</module>
@@ -66,10 +69,6 @@
     <!-- Spoofax Sunshine -->
     <module>${repo.root}/spoofax-sunshine/org.metaborg.sunshine2</module>
     <module>${repo.root}/spoofax-sunshine/spoofax.core.cmd</module>
-    
-    <!-- Spoofax Shell -->
-    <module>${repo.root}/spoofax-shell/org.metaborg.spoofax.shell.core</module>
-    <module>${repo.root}/spoofax-shell/org.metaborg.spoofax.shell.console</module>
   </modules>
 
   <developers>

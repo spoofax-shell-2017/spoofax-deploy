@@ -73,7 +73,9 @@ class RelengBuilder(object):
     spt = add_main_target('spt', stdLangDeps, RelengBuilder.__build_spt)
     allLangDeps = stdLangDeps + [dynsem, spt]
 
-    eclipsePrereqs = add_main_target('eclipse-prereqs', allLangDeps + [], RelengBuilder.__build_eclipse_prereqs)
+    shell = add_main_target('shell', stdDeps + [dynsem], RelengBuilder.__build_shell)
+
+    eclipsePrereqs = add_main_target('eclipse-prereqs', allLangDeps + [shell], RelengBuilder.__build_eclipse_prereqs)
     eclipse = add_main_target('eclipse', allLangDeps + [eclipsePrereqs], RelengBuilder.__build_eclipse)
 
     intellij = add_main_target('intellij', allLangDeps, RelengBuilder.__build_intellij)
@@ -339,6 +341,15 @@ class RelengBuilder(object):
         _glob_one(os.path.join(basedir, 'spt/org.metaborg.spt.cmd/target/org.metaborg.spt.cmd-*.jar'))
       )
     ])
+
+  @staticmethod
+  def __build_shell(basedir, eclipseQualifier, maven, mavenDeployer, **_):
+    target = 'deploy' if mavenDeployer else 'install'
+    cwd = os.path.join(basedir, 'releng', 'build', 'java', 'shell')
+    # Don't skip expensive steps, always clean, because of incompatibilities/bugs with annotation processor.
+    if 'clean' not in maven.targets:
+      maven.targets.insert(0, 'clean')
+    maven.run_in_dir(cwd, target, forceContextQualifier=eclipseQualifier)
 
   @staticmethod
   def __build_eclipse_prereqs(basedir, eclipseQualifier, maven, mavenDeployer, **_):
